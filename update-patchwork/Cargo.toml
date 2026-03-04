@@ -1,0 +1,15 @@
+
+[package]
+name = "update-patchwork"
+version = "0.1.0"
+edition = "2024"
+authors = ["Lilith Silver"]
+license = "MIT"
+
+
+[dependencies]
+reqwest = { version="0.13.2", features=["json"] }
+serde = { version="1.0.228", features=["derive"] }
+tokio = { version="1.50.0", features=["rt-multi-thread", "macros", "fs"] }
+tokio-util = "0.7.18"
+zip = "8.2.0"

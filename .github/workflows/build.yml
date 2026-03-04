@@ -1,0 +1,47 @@
+name: Build Patchwork
+
+on:
+  push:
+    paths:
+      - "**"
+      - "!**.md"
+    pull_request:
+      paths:
+        - "**"
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Build workspace packages
+        run: |
+          cargo build --release -p launch-patchwork
+          cargo build --release -p update-patchwork
+
+      - name: Collect executables
+        run: |
+          mkdir artifacts
+          copy target\release\launch-patchwork.exe artifacts\
+          copy target\release\update-patchwork.exe artifacts\
+          copy .gitignore.template artifacts\.gitignore
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: patchwork-exes
+          path: artifacts
+
+      - name: Upload to release
+        uses: softprops/action-gh-release@v2
+        if: github.ref_type == 'tag'
+        with:
+          files: artifacts/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
