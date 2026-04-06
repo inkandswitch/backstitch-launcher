@@ -17,8 +17,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
       - name: Upload gitignore
+        shell: bash
         run: |
-          copy .gitignore.template artifacts\.gitignore.template
+          cp .gitignore.template artifacts\.gitignore.template
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
