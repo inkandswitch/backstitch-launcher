@@ -1,5 +1,6 @@
 use reqwest::Client;
 use serde::Deserialize;
+use std::os::unix::fs::PermissionsExt;
 use std::{env, io};
 use std::error::Error;
 use std::fs::File;
@@ -112,6 +113,24 @@ fn godot_artifact_prefix() -> String {
 
 }
 
+async fn make_folder_contents_executable(path: &Path) -> Result<(), Box<dyn Error>> {
+    let mut entries = fs::read_dir(path).await?;
+    while let Some(entry) = entries.next_entry().await? {
+        let path = entry.path();
+
+        if path.is_file() {
+            let metadata = fs::metadata(&path).await?;
+            let mut perms = metadata.permissions();
+
+            let mode = perms.mode();
+            perms.set_mode(mode | 0o111); // add execute bits
+            fs::set_permissions(&path, perms).await?;
+        }
+    }
+
+    Ok(())
+}
+
 pub async fn try_update(current_version: Option<String>) -> Result<(), Box<dyn Error>> {
     let temp_dir = env::temp_dir().join("backstitch_update");
     let godot_zip_path = temp_dir.join("godot.zip");
@@ -171,8 +190,13 @@ pub async fn try_update(current_version: Option<String>) -> Result<(), Box<dyn E
     .await?;
 
     println!("Extracting Godot editor...");
-    ensure_empty_directory(Path::new(GODOT_OUTPUT_DIR)).await?;
+    let godot_folder = Path::new(GODOT_OUTPUT_DIR);
+    ensure_empty_directory(godot_folder).await?;
     unzip_file(&godot_zip_path, Path::new(GODOT_OUTPUT_DIR))?;
+
+    if cfg!(target_os = "linux") || cfg!(target_os = "macos") {
+        make_folder_contents_executable(godot_folder).await?;
+    }
 
     println!("Extracting Backstitch plugin...");
     ensure_empty_directory(Path::new(PLUGIN_OUTPUT_DIR)).await?;

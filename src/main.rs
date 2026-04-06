@@ -1,5 +1,6 @@
+use std::env;
 use std::error::Error;
-use std::io;
+use std::io::{self, IsTerminal};
 use std::path::PathBuf;
 use std::process::{Command, ExitCode};
 
@@ -62,8 +63,48 @@ async fn download_and_launch() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
+
+fn relaunch_in_terminal() -> Result<(), ()> {
+    let exe = env::current_exe().expect("Failed to get current executable");
+
+    // Try common terminal emulators
+    let terminals = [
+        ("x-terminal-emulator", &["-e"]),
+        ("gnome-terminal", &["--"]),
+        ("konsole", &["-e"]),
+        ("xterm", &["-e"]),
+        ("alacritty", &["-e"]),
+    ];
+
+    for (term, args) in terminals {
+        let result = Command::new(term)
+            .args(args)
+            .arg(&exe)
+            .spawn();
+
+        if result.is_ok() {
+            return Ok(());
+        }
+    }
+
+    eprintln!("Failed to find a terminal emulator.");
+    return Err(())
+}
+
 #[tokio::main]
 async fn main() -> ExitCode {
+    // Hacky fix to ensure we always launch a terminal for Godot. 
+    // Queries a bunch of common terminal emulators...
+    // If someone doesn't have any of these available... hopefully they know how to run it from the terminal.
+    if cfg!(target_os = "linux") && !std::io::stdout().is_terminal() {
+        // do we actually want to give up here, or try launching in the background?
+        // giving up for now
+        match relaunch_in_terminal() {
+            Ok(_) => return ExitCode::SUCCESS,
+            Err(_) => return ExitCode::FAILURE,
+        }
+    }
+
     let res = download_and_launch().await;
     // pause in case of error, so we can read it
     if let Err(_) = res {
