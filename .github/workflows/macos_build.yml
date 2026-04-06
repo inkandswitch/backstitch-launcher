@@ -55,4 +55,5 @@ jobs:
       - name: Upload artifacts
         uses: actions/upload-artifact@v6
         with:
+          name: backstitch-launcher.macos
           path: artifacts/backstitch-launcher.macos

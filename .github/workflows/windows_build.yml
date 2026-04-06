@@ -39,4 +39,5 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v6
         with:
+          name: backstitch-launcher.windows.exe
           path: artifacts/backstitch-launcher.windows.exe
