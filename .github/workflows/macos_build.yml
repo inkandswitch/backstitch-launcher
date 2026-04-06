@@ -1,0 +1,57 @@
+name: 🍎 Build for macOS
+on:
+  workflow_call:
+
+jobs:
+  build:
+    runs-on: "macos-latest"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Add macOS targets
+        run: |
+          rustup target add x86_64-apple-darwin
+          rustup target add aarch64-apple-darwin
+
+      - name: Build macOS universal binary
+        run: |
+          cargo build --release --target x86_64-apple-darwin
+          cargo build --release --target aarch64-apple-darwin
+
+          mkdir -p target/universal/release
+
+          lipo -create \
+            target/x86_64-apple-darwin/release/backstitch-launcher \
+            target/aarch64-apple-darwin/release/backstitch-launcher \
+            -output target/universal/release/backstitch-launcher
+
+      # TODO: I have no idea if this will even work with non .app... do we need a .app bundle?
+      # If so, we probably need to wrap the executable in a terminal launcher.
+      # Need cross-platform testing support for this.
+      # - name: Mac Sign
+      #   uses: ./.github/actions/macos-sign
+      #   with:
+      #     FRAMEWORK_PATH: ${{ github.workspace }}/target/universal/release/backstitch-launcher
+      #     SIGN_FLAGS: "--deep --force --options=runtime --entitlements ${{ github.workspace }}/misc/dist/macos/editor.entitlements"
+      #     APPLE_CERT_BASE64: ${{ secrets.APPLE_CERT_BASE64 }}
+      #     APPLE_CERT_PASSWORD: ${{ secrets.APPLE_CERT_PASSWORD }}
+      #     APPLE_DEV_PASSWORD: ${{ secrets.APPLE_DEV_PASSWORD }}
+      #     APPLE_DEV_ID: ${{ secrets.APPLE_DEV_ID }}
+      #     APPLE_DEV_TEAM_ID: ${{ secrets.APPLE_DEV_TEAM_ID }}
+      #     APPLE_DEV_APP_ID: ${{ secrets.APPLE_DEV_APP_ID }}
+      #     BUNDLE_IDENTIFIER_OVERRIDE: "com.inkandswitch.backstitch-launcher"
+            
+      - name: Collect artifacts
+        shell: bash
+        run: |
+          mkdir -p artifacts
+          cp target/universal/release/backstitch-launcher artifacts/backstitch-launcher.macos
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          path: artifacts/*

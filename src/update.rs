@@ -1,9 +1,9 @@
 use reqwest::Client;
 use serde::Deserialize;
-use std::env;
+use std::{env, io};
 use std::error::Error;
 use std::fs::File;
-use std::io::copy;
+use std::io::{Write, copy};
 use std::path::Path;
 use tokio::fs;
 use tokio::io::AsyncWriteExt;
@@ -11,7 +11,7 @@ use tokio::io::AsyncWriteExt;
 const GITHUB_API: &str =
     "https://api.github.com/repos/inkandswitch/patchwork-godot-plugin/releases/latest";
 
-const VERSION_FILE: &str = ".patchwork_version";
+const VERSION_FILE: &str = ".backstitch_version";
 const GODOT_OUTPUT_DIR: &str = "./godot_editor";
 const PLUGIN_OUTPUT_DIR: &str = "./addons/patchwork";
 
@@ -72,21 +72,54 @@ fn unzip_file(zip_path: &Path, dest: &Path) -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-async fn update_patchwork() -> Result<(), Box<dyn Error>> {
-    let temp_dir = env::temp_dir().join("patchwork_update");
+fn prompt_yes_no(prompt: &str) -> bool {
+    loop {
+        print!("{} (y/n): ", prompt);
+        io::stdout().flush().unwrap();
+
+        let mut input = String::new();
+        io::stdin().read_line(&mut input).unwrap();
+
+        match input.trim().to_lowercase().as_str() {
+            "y" | "yes" => return true,
+            "n" | "no" => return false,
+            _ => continue,
+        }
+    }
+}
+
+pub async fn get_current_version() -> Option<String> {
+    if Path::new(VERSION_FILE).exists() {
+        let current = fs::read_to_string(VERSION_FILE).await.ok()?.trim().to_string();
+        println!("Current Backstitch version: {}", current);
+        return Some(current);
+    } else {
+        println!("Backstitch is not currently installed.");
+        return None;
+    };
+}
+
+fn godot_artifact_prefix() -> String {
+    if cfg!(target_os = "windows") {
+        return "godot-with-patchwork-windows".to_string()
+    } else if cfg!(target_os = "linux") {
+        return "godot-with-patchwork-linux".to_string()
+    } else if cfg!(target_os = "macos") {
+        return "godot-with-patchwork-macos".to_string()
+    } else {
+        panic!("Unsupported OS");
+    };
+
+}
+
+pub async fn try_update(current_version: Option<String>) -> Result<(), Box<dyn Error>> {
+    let temp_dir = env::temp_dir().join("backstitch_update");
     let godot_zip_path = temp_dir.join("godot.zip");
     let plugin_zip_path = temp_dir.join("plugin.zip");
 
-    let current_version = if Path::new(VERSION_FILE).exists() {
-        fs::read_to_string(VERSION_FILE).await?.trim().to_string()
-    } else {
-        String::new()
-    };
-
-    println!("Current Patchwork version: {}", current_version);
     println!("Querying GitHub for latest release...");
 
-    let client = Client::builder().user_agent("update-patchwork").build()?;
+    let client = Client::builder().user_agent("backstitch-launcher").build()?;
 
     let release: Release = client
         .get(GITHUB_API)
@@ -98,18 +131,24 @@ async fn update_patchwork() -> Result<(), Box<dyn Error>> {
         .await?;
 
     let latest_version = release.tag_name;
-    println!("Latest Patchwork version: {}", latest_version);
+    println!("Latest Backstitch version: {}", latest_version);
 
-    if current_version == latest_version {
-        println!("Patchwork is already up to date. Exiting.");
+    if current_version.as_ref().is_some_and(|v| v == &latest_version) {
+        println!("Backstitch is already up to date!");
         return Ok(());
     }
 
-    // TODO: Make this cross-platform
+    // If the current version is empty, force an update. Otherwise, prompt.
+    if current_version.is_some() {
+        if !prompt_yes_no("Backstitch is out of date. Update?")  {
+            return Ok(());
+        }
+    }
+
     let godot_asset = release
         .assets
         .iter()
-        .find(|a| a.name.contains("godot-with-patchwork-windows"))
+        .find(|a| a.name.contains(godot_artifact_prefix().as_str()))
         .ok_or("Godot asset not found")?;
 
     let plugin_asset = release
@@ -123,7 +162,7 @@ async fn update_patchwork() -> Result<(), Box<dyn Error>> {
     println!("Downloading Godot editor...");
     download_file(&client, &godot_asset.browser_download_url, &godot_zip_path).await?;
 
-    println!("Downloading Patchwork plugin...");
+    println!("Downloading Backstitch plugin...");
     download_file(
         &client,
         &plugin_asset.browser_download_url,
@@ -135,7 +174,7 @@ async fn update_patchwork() -> Result<(), Box<dyn Error>> {
     ensure_empty_directory(Path::new(GODOT_OUTPUT_DIR)).await?;
     unzip_file(&godot_zip_path, Path::new(GODOT_OUTPUT_DIR))?;
 
-    println!("Extracting Patchwork plugin...");
+    println!("Extracting Backstitch plugin...");
     ensure_empty_directory(Path::new(PLUGIN_OUTPUT_DIR)).await?;
     unzip_file(&plugin_zip_path, Path::new(PLUGIN_OUTPUT_DIR))?;
 
@@ -145,15 +184,6 @@ async fn update_patchwork() -> Result<(), Box<dyn Error>> {
 
     fs::remove_dir_all(&temp_dir).await?;
 
-    println!("Patchwork update complete.");
-    Ok(())
-}
-
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn Error>> {
-    update_patchwork().await?;
-    println!("Press Enter to continue...");
-    let mut input = String::new();
-    std::io::stdin().read_line(&mut input).unwrap();
+    println!("Backstitch update complete.");
     Ok(())
 }

@@ -1,0 +1,27 @@
+name: 📦 Release
+on: 
+  workflow_call:
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: ${{ github.workspace }}
+
+      - name: Set permissions for Linux and macOS executables
+        shell: bash
+        run: |
+          chmod +x backstitch-launcher.linux || true
+          chmod +x backstitch-launcher.macos || true
+
+      - name: Create single zip of all artifacts
+        run: |
+          zip -r backstitch-launcher-${{ github.ref_name }}.zip backstitch-launcher.windows.exe backstitch-launcher.linux backstitch-launcher.macos .gitignore.template
+
+      - name: Release zip artifact
+        uses: softprops/action-gh-release@v2
+        with:
+          files: backstitch-launcher-${{ github.ref_name }}.zip
