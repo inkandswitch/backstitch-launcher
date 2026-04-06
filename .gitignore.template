@@ -1,3 +1,5 @@
 /addons/patchwork/
 /godot_editor/
 .backstitch_version
+/.patchwork/
+patchwork.cfg
