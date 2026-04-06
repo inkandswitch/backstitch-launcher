@@ -1,0 +1,10 @@
+
+[package]
+name = "launch-patchwork"
+version = "0.1.0"
+edition = "2024"
+authors = ["Lilith Silver"]
+license = "MIT"
+
+
+[dependencies]
