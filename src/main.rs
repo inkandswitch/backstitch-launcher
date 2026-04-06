@@ -1,4 +1,5 @@
 use std::error::Error;
+use std::io;
 use std::path::PathBuf;
 use std::process::{Command, ExitCode};
 
@@ -34,16 +35,28 @@ async fn download_and_launch() -> Result<(), Box<dyn Error>> {
 
     println!("Launching Godot from {:?}...", godot);
 
-    let status = Command::new(godot)
+    let code = match Command::new(godot)
         .arg("-e")
         .arg("--path")
         .arg(".")
-        .status()?;
+        .status()
+    {
+        Err(e) => {
+            println!("Failed to launch Godot: {e}");
+            return Err(Box::new(e));
+        }
+        Ok(status) => status,
+    };
 
-    if status.success() {
+    if code.success() {
         println!("Godot editor launched successfully.");
     } else {
-        println!("Godot editor exited with: {}", status);
+        let err = io::Error::new(
+            io::ErrorKind::Other,
+            format!("Godot editor exited with: {}", code),
+        );
+        println!("{err}");
+        return Err(Box::new(err));
     }
 
     Ok(())
