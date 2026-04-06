@@ -19,9 +19,9 @@ jobs:
       - name: Upload gitignore
         shell: bash
         run: |
-          cp .gitignore.template artifacts\.gitignore.template
+          cp .gitignore.template artifacts/.gitignore.template
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           include-hidden-files: true
           path: artifacts/*

@@ -38,6 +38,6 @@ jobs:
           cp target/release/backstitch-launcher.exe artifacts/backstitch-launcher.windows.exe
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
-          path: artifacts/*
+          path: artifacts/backstitch-launcher.windows.exe

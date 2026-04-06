@@ -23,6 +23,6 @@ jobs:
           cp target/release/backstitch-launcher artifacts/backstitch-launcher.linux
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
-          path: artifacts/*
+          path: artifacts/backstitch-launcher.linux

@@ -52,6 +52,6 @@ jobs:
           cp target/universal/release/backstitch-launcher artifacts/backstitch-launcher.macos
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
-          path: artifacts/*
+          path: artifacts/backstitch-launcher.macos
