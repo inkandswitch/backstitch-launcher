@@ -27,6 +27,7 @@ jobs:
         with:
           include-hidden-files: true
           path: artifacts/*
+          name: ".gitignore.template"
 
   macos-build:
     name: 🍎 Build for macOS
