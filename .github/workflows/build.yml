@@ -12,6 +12,7 @@ on:
 
 jobs:
   upload-gitignore:
+    name: 📝 Upload gitignore template
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -19,6 +20,7 @@ jobs:
       - name: Upload gitignore
         shell: bash
         run: |
+          mkdir -p artifacts/
           cp .gitignore.template artifacts/.gitignore.template
       - name: Upload artifact
         uses: actions/upload-artifact@v6

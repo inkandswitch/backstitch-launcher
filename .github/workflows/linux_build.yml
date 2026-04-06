@@ -6,6 +6,7 @@ on:
 jobs:
   build:
     runs-on: windows-latest
+    name: 🔨 Build
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -19,6 +20,7 @@ jobs:
       - name: Collect executables
         shell: bash
         run: |
+          ls -l target/release
           mkdir -p artifacts
           cp target/release/backstitch-launcher artifacts/backstitch-launcher.linux
 

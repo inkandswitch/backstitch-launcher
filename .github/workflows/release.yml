@@ -4,6 +4,7 @@ on:
 
 jobs:
   release:
+    name: ✉️ Release composite zip
     runs-on: ubuntu-latest
     steps:
       - name: Download all artifacts
