@@ -1,5 +1,6 @@
 use reqwest::Client;
 use serde::Deserialize;
+#[cfg(not(target_os = "windows"))]
 use std::os::unix::fs::PermissionsExt;
 use std::{env, io};
 use std::error::Error;
@@ -113,6 +114,7 @@ fn godot_artifact_prefix() -> String {
 
 }
 
+#[cfg(not(target_os = "windows"))]
 async fn make_folder_contents_executable(path: &Path) -> Result<(), Box<dyn Error>> {
     let mut entries = fs::read_dir(path).await?;
     while let Some(entry) = entries.next_entry().await? {
@@ -194,9 +196,8 @@ pub async fn try_update(current_version: Option<String>) -> Result<(), Box<dyn E
     ensure_empty_directory(godot_folder).await?;
     unzip_file(&godot_zip_path, Path::new(GODOT_OUTPUT_DIR))?;
 
-    if cfg!(target_os = "linux") || cfg!(target_os = "macos") {
-        make_folder_contents_executable(godot_folder).await?;
-    }
+    #[cfg(not(target_os = "windows"))]
+    make_folder_contents_executable(godot_folder).await?;
 
     println!("Extracting Backstitch plugin...");
     ensure_empty_directory(Path::new(PLUGIN_OUTPUT_DIR)).await?;
