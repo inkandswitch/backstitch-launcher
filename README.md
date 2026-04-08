@@ -1,6 +1,6 @@
 # Backstitch Launcher
 
-A launcher for [Backstitch](https://github.com/inkandswitch/patchwork-godot-plugin/). When dropped in a project, this launcher will ensure you have the correct version of Backstitch and Godot, and run your project.
+A launcher for [Backstitch](https://backstitch.dev/). When dropped in a project, this launcher will ensure you have the correct version of Backstitch and Godot, and run your project.
 
 ## How to Use
 
