@@ -1,12 +1,10 @@
-# Patchwork Update Script
-A Patchwork update and launch script for Endless Foundation.
+# Backstitch Launcher
+
+A launcher for [Backstitch](https://github.com/inkandswitch/patchwork-godot-plugin/). When dropped in a project, this launcher will ensure you have the correct version of Backstitch and Godot, and run your project.
 
 ## How to Use
 
-1. Download the [latest release](https://github.com/LilithSilver/patchwork-update-script/releases).
-2. Place `update-patchwork.exe` and `launch-patchwork.exe` in your Godot project's root
-3. Run `update-patchwork.exe` to update patchwork
-4. Run `launch-patchwork.exe` to launch Godot with the downloaded editor
-5. Make sure to merge the release's `.gitignore.template` with your own `.gitignore`.
-
-Note: This script only works on Windows.
+1. Download the [latest release](https://github.com/inkandswitch/backstitch-launcher/releases).
+2. Unzip the folder, and place its contents in the root directory.
+3. If you use Git, merge the `.gitignore.template` with your own `.gitignore`.
+4. Run `backstitch-launcher` for your platform to launch your project with the latest version of Backstitch.

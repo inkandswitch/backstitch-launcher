@@ -1,46 +1,45 @@
-name: Build Patchwork Update Script for Windows
+name: Build Backstitch Launcher (All Platforms)
 
 on:
   push:
     paths:
       - "**"
       - "!**.md"
-    pull_request:
-      paths:
-        - "**"
+  pull_request:
+    paths:
+      - "**"
+      - "!**.md"
 
 jobs:
-  build:
-    runs-on: windows-latest
-
+  upload-gitignore:
+    name: 📝 Upload gitignore template
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v6
-
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Build workspace packages
+      - name: Upload gitignore
+        shell: bash
         run: |
-          cargo build --release -p launch-patchwork
-          cargo build --release -p update-patchwork
-
-      - name: Collect executables
-        run: |
-          mkdir artifacts
-          copy target\release\launch-patchwork.exe artifacts\
-          copy target\release\update-patchwork.exe artifacts\
-          copy .gitignore.template artifacts\.gitignore
-
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4    
+          mkdir -p artifacts/
+          cp .gitignore.template artifacts/.gitignore.template
+      - name: Upload artifact
+        uses: actions/upload-artifact@v6
         with:
-          name: patchwork-exes
           include-hidden-files: true
-          path: artifacts
+          path: artifacts/*
+          name: ".gitignore.template"
 
-      - name: Upload to release
-        uses: softprops/action-gh-release@v2
-        if: github.ref_type == 'tag'
-        with:
-          files: artifacts/*
+  macos-build:
+    name: 🍎 Build for macOS
+    uses: ./.github/workflows/macos_build.yml
+  windows-build:
+    name: 🪟 Build for Windows
+    uses: ./.github/workflows/windows_build.yml
+  linux-build:
+    name: 🐧 Build for Linux
+    uses: ./.github/workflows/linux_build.yml
+  release:
+    name: 📦 Release
+    if: github.ref_type == 'tag'
+    needs: [macos-build, windows-build, linux-build, upload-gitignore]
+    uses: ./.github/workflows/release.yml

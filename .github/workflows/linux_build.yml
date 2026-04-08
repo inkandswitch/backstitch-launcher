@@ -1,0 +1,31 @@
+name: 🐧 Build for Linux
+
+on:
+  workflow_call:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    name: 🔨 Build
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Build
+        run: cargo build --release
+
+      - name: Collect executables
+        shell: bash
+        run: |
+          ls -l target/release
+          mkdir -p artifacts
+          cp target/release/backstitch-launcher artifacts/backstitch-launcher.linux
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v6
+        with:
+          name: backstitch-launcher.linux
+          path: artifacts/backstitch-launcher.linux
