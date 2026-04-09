@@ -284,7 +284,7 @@ pub async fn try_update(mut current_version: Option<String>) -> Result<(), Box<d
     }
 
     #[cfg(not(target_os = "windows"))]
-    make_folder_contents_executable(Path::from(GODOT_OUTPUT_DIR)).await?;
+    make_folder_contents_executable(Path::new(GODOT_OUTPUT_DIR)).await?;
 
     println!("Writing version file...");
     let mut version_file = fs::File::create(VERSION_FILE).await?;
