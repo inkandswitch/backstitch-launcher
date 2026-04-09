@@ -1,7 +1,6 @@
 use std::env;
 use std::error::Error;
 use std::io::{self, IsTerminal};
-use std::path::PathBuf;
 use std::process::{Command, ExitCode};
 
 pub mod update;
@@ -17,23 +16,11 @@ async fn download_and_launch() -> Result<(), Box<dyn Error>> {
             return Err(e);
         } else {
             println!("Error during Backstitch update: {e}");
-            println!("Launching old version...")
+            println!("Attempting to launch old version...")
         }
     }
 
-    let exe_name = if cfg!(target_os = "windows") {
-        "godot.windows.editor.x86_64.exe"
-    } else if cfg!(target_os = "linux") {
-        "godot.linuxbsd.editor.x86_64"
-    } else if cfg!(target_os = "macos") {
-        // Godot macOS builds are inside an .app bundle
-        "godot_macos_editor.app/Contents/MacOS/Godot"
-    } else {
-        panic!("Unsupported OS");
-    };
-
-    let godot: PathBuf = std::env::current_dir()?.join("godot_editor").join(exe_name);
-
+    let godot = update::get_godot_path();
     println!("Launching Godot from {:?}...", godot);
 
     let code = match Command::new(godot)
