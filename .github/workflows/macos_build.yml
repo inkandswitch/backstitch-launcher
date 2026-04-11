@@ -33,18 +33,18 @@ jobs:
       # TODO: I have no idea if this will even work with non .app... do we need a .app bundle?
       # If so, we probably need to wrap the executable in a terminal launcher.
       # Need cross-platform testing support for this.
-      # - name: Mac Sign
-      #   uses: ./.github/actions/macos-sign
-      #   with:
-      #     FRAMEWORK_PATH: ${{ github.workspace }}/target/universal/release/backstitch-launcher
-      #     SIGN_FLAGS: "--deep --force --options=runtime --entitlements ${{ github.workspace }}/misc/dist/macos/editor.entitlements"
-      #     APPLE_CERT_BASE64: ${{ secrets.APPLE_CERT_BASE64 }}
-      #     APPLE_CERT_PASSWORD: ${{ secrets.APPLE_CERT_PASSWORD }}
-      #     APPLE_DEV_PASSWORD: ${{ secrets.APPLE_DEV_PASSWORD }}
-      #     APPLE_DEV_ID: ${{ secrets.APPLE_DEV_ID }}
-      #     APPLE_DEV_TEAM_ID: ${{ secrets.APPLE_DEV_TEAM_ID }}
-      #     APPLE_DEV_APP_ID: ${{ secrets.APPLE_DEV_APP_ID }}
-      #     BUNDLE_IDENTIFIER_OVERRIDE: "com.inkandswitch.backstitch-launcher"
+      - name: Mac Sign
+        uses: ./.github/actions/macos-sign
+        with:
+          FRAMEWORK_PATH: ${{ github.workspace }}/target/universal/release/backstitch-launcher
+          SIGN_FLAGS: "--deep --force --options=runtime --entitlements ${{ github.workspace }}/misc/dist/macos/editor.entitlements"
+          APPLE_CERT_BASE64: ${{ secrets.APPLE_CERT_BASE64 }}
+          APPLE_CERT_PASSWORD: ${{ secrets.APPLE_CERT_PASSWORD }}
+          APPLE_DEV_PASSWORD: ${{ secrets.APPLE_DEV_PASSWORD }}
+          APPLE_DEV_ID: ${{ secrets.APPLE_DEV_ID }}
+          APPLE_DEV_TEAM_ID: ${{ secrets.APPLE_DEV_TEAM_ID }}
+          APPLE_DEV_APP_ID: ${{ secrets.APPLE_DEV_APP_ID }}
+          BUNDLE_IDENTIFIER_OVERRIDE: "com.inkandswitch.backstitch-launcher"
             
       - name: Collect artifacts
         shell: bash
