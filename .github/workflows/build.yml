@@ -32,9 +32,17 @@ jobs:
   macos-build:
     name: 🍎 Build for macOS
     uses: ./.github/workflows/macos_build.yml
+    secrets: inherit
+    permissions:
+      contents: 'read'
+      id-token: 'write'
   windows-build:
     name: 🪟 Build for Windows
     uses: ./.github/workflows/windows_build.yml
+    secrets: inherit
+    permissions:
+      contents: 'read'
+      id-token: 'write'
   linux-build:
     name: 🐧 Build for Linux
     uses: ./.github/workflows/linux_build.yml
