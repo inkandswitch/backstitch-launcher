@@ -37,7 +37,7 @@ jobs:
         uses: ./.github/actions/macos-sign
         with:
           FRAMEWORK_PATH: ${{ github.workspace }}/target/universal/release/backstitch-launcher
-          SIGN_FLAGS: "--deep"
+          SIGN_FLAGS: "--deep --options runtime"
           APPLE_CERT_BASE64: ${{ secrets.APPLE_CERT_BASE64 }}
           APPLE_CERT_PASSWORD: ${{ secrets.APPLE_CERT_PASSWORD }}
           APPLE_DEV_PASSWORD: ${{ secrets.APPLE_DEV_PASSWORD }}
