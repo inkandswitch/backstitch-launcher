@@ -50,10 +50,10 @@ jobs:
         shell: bash
         run: |
           mkdir -p artifacts
-          cp target/universal/release/backstitch-launcher artifacts/backstitch-launcher.macos
+          cp target/universal/release/backstitch-launcher artifacts/backstitch-launcher-macos
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v6
         with:
-          name: backstitch-launcher.macos
-          path: artifacts/backstitch-launcher.macos
+          name: backstitch-launcher-macos
+          path: artifacts/backstitch-launcher-macos

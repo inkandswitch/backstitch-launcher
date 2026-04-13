@@ -33,10 +33,10 @@ jobs:
         shell: bash
         run: |
           mkdir -p artifacts
-          cp target/release/backstitch-launcher.exe artifacts/backstitch-launcher.windows.exe
+          cp target/release/backstitch-launcher.exe artifacts/backstitch-launcher-windows.exe
 
       - name: Upload artifact
         uses: actions/upload-artifact@v6
         with:
-          name: backstitch-launcher.windows.exe
-          path: artifacts/backstitch-launcher.windows.exe
+          name: backstitch-launcher-windows.exe
+          path: artifacts/backstitch-launcher-windows.exe

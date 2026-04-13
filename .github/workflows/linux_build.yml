@@ -22,10 +22,10 @@ jobs:
         run: |
           ls -l target/release
           mkdir -p artifacts
-          cp target/release/backstitch-launcher artifacts/backstitch-launcher.linux
+          cp target/release/backstitch-launcher artifacts/backstitch-launcher-linux
 
       - name: Upload artifact
         uses: actions/upload-artifact@v6
         with:
-          name: backstitch-launcher.linux
-          path: artifacts/backstitch-launcher.linux
+          name: backstitch-launcher-linux
+          path: artifacts/backstitch-launcher-linux
