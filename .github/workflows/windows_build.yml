@@ -11,6 +11,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
+      - name: Restore Cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          prefix-key: "backstitch-launcher-windows-build"
+
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
 
