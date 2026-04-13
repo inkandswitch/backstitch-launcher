@@ -102,8 +102,15 @@ async fn main() -> ExitCode {
             let exe_dir = exe.parent().expect("Failed to get parent directory");
             cwd = exe_dir.to_path_buf();
             println!("CWD: {:?}", cwd);
-        } 
-        if cwd.ends_with("Contents/MacOS") {
+        }
+        // App translocation; we can't find the current directory, so we'll create a directory in the home directory
+        if cwd.starts_with("/private"){
+            let home = env::var("HOME").expect("Failed to get home directory");
+            let backstitch_launcher_dir = std::path::PathBuf::from(&home).join(".backstitch-launcher");
+            std::fs::create_dir_all(&backstitch_launcher_dir).expect("Failed to create backstitch-launcher directory");
+            env::set_current_dir(&backstitch_launcher_dir).expect("Failed to set current directory");
+            println!("Changed CWD to {:?}", backstitch_launcher_dir);
+        } else if cwd.ends_with("Contents/MacOS") {
             let project_root = cwd.parent().expect("Failed to get parent directory").parent().expect("Failed to get parent2 directory").parent().expect("Failed to get parent3 directory");
             env::set_current_dir(project_root).expect("Failed to set current directory");
             println!("Changed CWD to {:?}", project_root);
