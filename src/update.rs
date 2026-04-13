@@ -67,6 +67,12 @@ fn unzip_file(zip_path: &Path, dest: &Path) -> Result<(), Box<dyn Error>> {
                 std::fs::create_dir_all(parent)?;
             }
             let mut outfile = File::create(&out_path)?;
+            // get permissions from the source file
+            #[cfg(not(target_os = "windows"))]
+            {
+                let permissions = file.unix_mode().unwrap_or_default();
+                let _ = outfile.set_permissions(std::fs::Permissions::from_mode(permissions));
+            }
             copy(&mut file, &mut outfile)?;
         }
     }
