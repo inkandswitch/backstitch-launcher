@@ -17,11 +17,12 @@ jobs:
         shell: bash
         run: |
           chmod +x backstitch-launcher-linux || true
-          chmod +x backstitch-launcher-macos || true
+          MAC_BIN="backstitch-launcher-macos.app/Contents/MacOS/backstitch-launcher"
+          if [ -f "$MAC_BIN" ]; then chmod +x "$MAC_BIN"; fi
 
       - name: Create single zip of all artifacts
         run: |
-          zip -r backstitch-launcher-${{ github.ref_name }}.zip backstitch-launcher-windows.exe backstitch-launcher-linux backstitch-launcher-macos .gitignore.template
+          zip -ry backstitch-launcher-${{ github.ref_name }}.zip backstitch-launcher-windows.exe backstitch-launcher-linux backstitch-launcher-macos.app .gitignore.template
 
       - name: Release zip artifact
         uses: softprops/action-gh-release@v2

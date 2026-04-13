@@ -18,6 +18,9 @@ jobs:
           rustup target add x86_64-apple-darwin
           rustup target add aarch64-apple-darwin
 
+      - name: Install cargo-bundle
+        run: cargo install cargo-bundle
+
       - name: Build macOS universal binary
         run: |
           cargo build --release --target x86_64-apple-darwin
@@ -30,19 +33,24 @@ jobs:
             target/aarch64-apple-darwin/release/backstitch-launcher \
             -output target/universal/release/backstitch-launcher
 
-      - name: Collect artifacts
+      - name: Bundle macOS app
         shell: bash
         run: |
+          set -euo pipefail
+          cargo bundle --release --format osx
+          BUNDLE_APP="$(find target/release/bundle/osx -maxdepth 1 -name "*.app" | head -n1)"
+          test -n "$BUNDLE_APP"
+          cp -f target/universal/release/backstitch-launcher \
+            "$BUNDLE_APP/Contents/MacOS/backstitch-launcher"
+          chmod +x "$BUNDLE_APP/Contents/MacOS/backstitch-launcher"
           mkdir -p artifacts
-          cp target/universal/release/backstitch-launcher artifacts/backstitch-launcher-macos
-    
-      # TODO: I have no idea if this will even work with non .app... do we need a .app bundle?
-      # If so, we probably need to wrap the executable in a terminal launcher.
-      # Need cross-platform testing support for this.
+          rm -rf artifacts/backstitch-launcher-macos.app
+          cp -R "$BUNDLE_APP" artifacts/backstitch-launcher-macos.app
+
       - name: Mac Sign
         uses: ./.github/actions/macos-sign
         with:
-          FRAMEWORK_PATH: ${{ github.workspace }}/artifacts/backstitch-launcher-macos
+          FRAMEWORK_PATH: ${{ github.workspace }}/artifacts/backstitch-launcher-macos.app
           SIGN_FLAGS: "--deep --options runtime"
           APPLE_CERT_BASE64: ${{ secrets.APPLE_CERT_BASE64 }}
           APPLE_CERT_PASSWORD: ${{ secrets.APPLE_CERT_PASSWORD }}
@@ -57,4 +65,4 @@ jobs:
         uses: actions/upload-artifact@v6
         with:
           name: backstitch-launcher-macos
-          path: artifacts/backstitch-launcher-macos
+          path: artifacts/backstitch-launcher-macos.app
