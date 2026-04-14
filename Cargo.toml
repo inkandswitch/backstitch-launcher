@@ -4,6 +4,17 @@ version = "0.1.0"
 edition = "2024"
 authors = ["Lilith Silver"]
 license = "MIT"
+description = "Ensures the correct Backstitch and Godot versions and runs your project."
+
+[package.metadata.bundle]
+name = "backstitch-launcher-macos"
+identifier = "com.inkandswitch.backstitch-launcher"
+copyright = "Copyright (c) Ink & Switch LLC"
+category = "Developer Tool"
+short_description = "Launcher for Backstitch Godot projects."
+long_description = """
+Downloads and runs the matching Backstitch editor and Godot for your project.
+"""
 
 [dependencies]
 reqwest = { version="0.13.2", features=["json"] }
@@ -11,3 +22,7 @@ serde = { version="1.0.228", features=["derive"] }
 tokio = { version="1.51.0", features=["rt-multi-thread", "macros", "fs"] }
 tokio-util = "0.7.18"
 zip = "8.5.0"
+
+# mac only dependencies
+[target.'cfg(target_os = "macos")'.dependencies]
+untranslocator = "0.1.0"

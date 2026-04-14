@@ -10,6 +10,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
+      - name: Restore Cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          prefix-key: "backstitch-launcher-macos-build"
+
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
 
@@ -17,6 +22,9 @@ jobs:
         run: |
           rustup target add x86_64-apple-darwin
           rustup target add aarch64-apple-darwin
+
+      - name: Install cargo-bundle
+        run: cargo install cargo-bundle
 
       - name: Build macOS universal binary
         run: |
@@ -30,14 +38,25 @@ jobs:
             target/aarch64-apple-darwin/release/backstitch-launcher \
             -output target/universal/release/backstitch-launcher
 
-      # TODO: I have no idea if this will even work with non .app... do we need a .app bundle?
-      # If so, we probably need to wrap the executable in a terminal launcher.
-      # Need cross-platform testing support for this.
+      - name: Bundle macOS app
+        shell: bash
+        run: |
+          set -euo pipefail
+          cargo bundle --release --format osx
+          BUNDLE_APP="$(find target/release/bundle/osx -maxdepth 1 -name "*.app" | head -n1)"
+          test -n "$BUNDLE_APP"
+          cp -f target/universal/release/backstitch-launcher \
+            "$BUNDLE_APP/Contents/MacOS/backstitch-launcher"
+          chmod +x "$BUNDLE_APP/Contents/MacOS/backstitch-launcher"
+          mkdir -p artifacts
+          rm -rf artifacts/backstitch-launcher-macos.app
+          cp -R "$BUNDLE_APP" artifacts/backstitch-launcher-macos.app
+
       - name: Mac Sign
         uses: ./.github/actions/macos-sign
         with:
-          FRAMEWORK_PATH: ${{ github.workspace }}/target/universal/release/backstitch-launcher
-          SIGN_FLAGS: "--deep"
+          FRAMEWORK_PATH: ${{ github.workspace }}/artifacts/backstitch-launcher-macos.app
+          SIGN_FLAGS: "--deep --options runtime"
           APPLE_CERT_BASE64: ${{ secrets.APPLE_CERT_BASE64 }}
           APPLE_CERT_PASSWORD: ${{ secrets.APPLE_CERT_PASSWORD }}
           APPLE_DEV_PASSWORD: ${{ secrets.APPLE_DEV_PASSWORD }}
@@ -45,15 +64,9 @@ jobs:
           APPLE_DEV_TEAM_ID: ${{ secrets.APPLE_DEV_TEAM_ID }}
           APPLE_DEV_APP_ID: ${{ secrets.APPLE_DEV_APP_ID }}
           BUNDLE_IDENTIFIER_OVERRIDE: "com.inkandswitch.backstitch-launcher"
-            
-      - name: Collect artifacts
-        shell: bash
-        run: |
-          mkdir -p artifacts
-          cp target/universal/release/backstitch-launcher artifacts/backstitch-launcher.macos
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v6
         with:
-          name: backstitch-launcher.macos
-          path: artifacts/backstitch-launcher.macos
+          name: backstitch-launcher-macos
+          path: artifacts/*

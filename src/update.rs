@@ -67,6 +67,12 @@ fn unzip_file(zip_path: &Path, dest: &Path) -> Result<(), Box<dyn Error>> {
                 std::fs::create_dir_all(parent)?;
             }
             let mut outfile = File::create(&out_path)?;
+            // get permissions from the source file
+            #[cfg(not(target_os = "windows"))]
+            {
+                let permissions = file.unix_mode().unwrap_or_default();
+                let _ = outfile.set_permissions(std::fs::Permissions::from_mode(permissions));
+            }
             copy(&mut file, &mut outfile)?;
         }
     }
@@ -166,6 +172,7 @@ async fn acquire_from_release(
 
     let temp_dir = env::temp_dir()
         .join("backstitch_update");
+    println!("Temp dir: {:?}", temp_dir);
     ensure_empty_directory(&temp_dir).await?;
     
     let temp_dir = temp_dir.join(asset.name.clone());
@@ -173,7 +180,7 @@ async fn acquire_from_release(
     println!("Downloading {}", asset.name);
     download_file(&client, &asset.browser_download_url, &temp_dir).await?;
 
-    println!("Extracting {}...", asset.name);
+    println!("Extracting {} to {:?}...", asset.name, output_dir);
     ensure_empty_directory(output_dir).await?;
     unzip_file(&temp_dir, output_dir)?;
 

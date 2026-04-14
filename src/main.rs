@@ -92,6 +92,30 @@ async fn main() -> ExitCode {
         }
     }
 
+    #[cfg(target_os = "macos")]
+    {
+        // change cwd from the .app bundle to the project root
+        let mut cwd = env::current_dir().expect("Failed to get current directory");
+        println!("CWD: {:?}", cwd);
+        if cwd.to_str().unwrap() == "/" {
+            // change it to the executable's directory
+            let exe = env::current_exe().expect("Failed to get current executable");
+            let exe_dir = exe.parent().expect("Failed to get parent directory");
+            cwd = exe_dir.to_path_buf();
+        }
+        // App translocation; we can't find the current directory, so we'll create a directory in the home directory
+        if cwd.starts_with("/private"){
+            cwd = untranslocator::resolve_translocated_path(&cwd).expect("Failed to resolve translocated path");
+        } 
+        if cwd.ends_with("Contents/MacOS") {
+            let project_root = cwd.parent().expect("Failed to get parent directory").parent().expect("Failed to get parent2 directory").parent().expect("Failed to get parent3 directory");
+            env::set_current_dir(project_root).expect("Failed to set current directory");
+            println!("Changed CWD from {:?} to {:?}", cwd, project_root);
+        } else{
+            println!("Already in the project root");
+        }
+    }
+
     let res = download_and_launch().await;
     // pause in case of error, so we can read it
     if let Err(_) = res {
