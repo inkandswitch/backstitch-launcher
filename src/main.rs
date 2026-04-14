@@ -104,10 +104,9 @@ async fn main() -> ExitCode {
         }
         // App translocation; we can't find the current directory, so we'll create a directory in the home directory
         if cwd.starts_with("/private"){
-            let backstitch_launcher_dir = untranslocator::resolve_translocated_path(&cwd).expect("Failed to resolve translocated path");
-            env::set_current_dir(&backstitch_launcher_dir).expect("Failed to set current directory");
-            println!("Changed CWD from {:?} to {:?}", cwd, backstitch_launcher_dir);
-        } else if cwd.ends_with("Contents/MacOS") {
+            cwd = untranslocator::resolve_translocated_path(&cwd).expect("Failed to resolve translocated path");
+        } 
+        if cwd.ends_with("Contents/MacOS") {
             let project_root = cwd.parent().expect("Failed to get parent directory").parent().expect("Failed to get parent2 directory").parent().expect("Failed to get parent3 directory");
             env::set_current_dir(project_root).expect("Failed to set current directory");
             println!("Changed CWD from {:?} to {:?}", cwd, project_root);
