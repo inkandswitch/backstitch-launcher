@@ -92,7 +92,8 @@ async fn main() -> ExitCode {
         }
     }
 
-    if cfg!(target_os = "macos") {
+    #[cfg(target_os = "macos")]
+    {
         // change cwd from the .app bundle to the project root
         let mut cwd = env::current_dir().expect("Failed to get current directory");
         println!("CWD: {:?}", cwd);
