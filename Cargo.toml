@@ -22,3 +22,7 @@ serde = { version="1.0.228", features=["derive"] }
 tokio = { version="1.51.0", features=["rt-multi-thread", "macros", "fs"] }
 tokio-util = "0.7.18"
 zip = "8.5.0"
+
+# mac only dependencies
+[target.'cfg(target_os = "macos")'.dependencies]
+untranslocator = "0.1.0"
