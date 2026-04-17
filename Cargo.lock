@@ -1646,9 +1646,9 @@ checksum = "ebc1c04c71510c7f702b52b7c350734c9ff1295c464a03335b00bb84fc54f853"
 
 [[package]]
 name = "untranslocator"
-version = "0.1.0"
+version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2491a030f3130717546318666c7786b984b031fd1e096f40014fcce99f4b3a96"
+checksum = "27199eadc2e5b621605fec2e34413203aa465599f5599935956c0e550b42d797"
 
 [[package]]
 name = "untrusted"

@@ -24,7 +24,7 @@ jobs:
           rustup target add aarch64-apple-darwin
 
       - name: Install cargo-bundle
-        run: cargo install cargo-bundle
+        run: cargo install --force cargo-bundle
 
       - name: Build macOS universal binary
         run: |

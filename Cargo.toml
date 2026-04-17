@@ -25,4 +25,4 @@ zip = "8.5.0"
 
 # mac only dependencies
 [target.'cfg(target_os = "macos")'.dependencies]
-untranslocator = "0.1.0"
+untranslocator = "0.1.2"
