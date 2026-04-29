@@ -2,6 +2,8 @@
 
 A launcher for [Backstitch](https://backstitch.dev/). When dropped in a project, this launcher will ensure you have the correct version of Backstitch and Godot, and run your project.
 
+Join our [Discord](https://discord.gg/SkW9vem5Ez) to connect with the Backstitch community!
+
 ## How to Use
 
 1. Download the [latest release](https://github.com/inkandswitch/backstitch-launcher/releases).
