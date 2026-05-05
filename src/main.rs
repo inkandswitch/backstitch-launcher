@@ -56,8 +56,10 @@ fn relaunch_in_terminal() -> Result<(), ()> {
 
     // Try common terminal emulators
     let terminals = [
+        ("xdg-terminal-exec", &["--"]),
         ("x-terminal-emulator", &["-e"]),
         ("gnome-terminal", &["--"]),
+        ("ptyxis", &["--"]),
         ("konsole", &["-e"]),
         ("xterm", &["-e"]),
         ("alacritty", &["-e"]),
