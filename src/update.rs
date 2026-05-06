@@ -81,11 +81,6 @@ fn unzip_file(zip_path: &Path, dest: &Path) -> Result<(), Box<dyn Error>> {
 }
 
 fn prompt_yes_no(prompt: &str) -> bool {
-    // HACK: if we're not in a terminal, just return true
-    if !std::io::stdout().is_terminal() {
-        return true;
-    }
-
     loop {
         print!("{} (y/n): ", prompt);
         io::stdout().flush().unwrap();
@@ -238,6 +233,11 @@ async fn overwrite_release(client: &Client, release: &Release) -> Result<(), Box
     Ok(())
 }
 
+pub fn is_dev_version(version: &str) -> bool {
+    // if the version is something like 209/fixes (i.e. a PR branch), return true
+    version.contains("/")
+}
+
 pub async fn try_update(mut current_version: Option<String>) -> Result<(), Box<dyn Error>> {
     let temp_dir = env::temp_dir().join("backstitch_update");
 
@@ -268,7 +268,17 @@ pub async fn try_update(mut current_version: Option<String>) -> Result<(), Box<d
     } else {
         // If the current version is empty, force an update. Otherwise, prompt.
         if current_version.is_some() {
-            if prompt_yes_no("Backstitch is out of date. Update?") {
+            // HACK: if we're not in a terminal, just return true
+            if !std::io::stdin().is_terminal() {
+                if let Some(current_version) = current_version.as_ref() {
+                    if is_dev_version(current_version) {
+                        println!("Not updating dev version...");
+                        updating = false;
+                    } else {
+                        updating = true;
+                    }
+                }
+            } else if prompt_yes_no("Backstitch is out of date. Update?") {
                 current_version = Some(latest_version);
                 updating = true;
             }
