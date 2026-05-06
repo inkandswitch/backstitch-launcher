@@ -123,8 +123,10 @@ pub fn get_godot_path() -> PathBuf {
         panic!("Unsupported OS");
     };
 
-    return std::env::current_dir().unwrap().join("godot_editor").join(exe_name);
-
+    return std::env::current_dir()
+        .unwrap()
+        .join("godot_editor")
+        .join(exe_name);
 }
 
 fn godot_artifact_prefix() -> String {
@@ -170,11 +172,10 @@ async fn acquire_from_release(
         .find(|a| a.name.contains(prefix.as_str()))
         .ok_or(format!("Asset containing {prefix} not found"))?;
 
-    let temp_dir = env::temp_dir()
-        .join("backstitch_update");
+    let temp_dir = env::temp_dir().join("backstitch_update");
     println!("Temp dir: {:?}", temp_dir);
     ensure_empty_directory(&temp_dir).await?;
-    
+
     let temp_dir = temp_dir.join(asset.name.clone());
 
     println!("Downloading {}", asset.name);
@@ -187,11 +188,8 @@ async fn acquire_from_release(
     Ok(())
 }
 
-async fn ensure_release(client: &Client, release: &Release) -> Result<(), Box<dyn Error>> {
+async fn ensure_godot_release(client: &Client, release: &Release) -> Result<(), Box<dyn Error>> {
     let godot_exists = tokio::fs::try_exists(get_godot_path()).await?;
-    // we could check the plugin version file instead of just the directory's existence... but this is fine
-    let backstitch_exists = tokio::fs::try_exists(Path::new(PLUGIN_OUTPUT_DIR)).await?;
-
     if !godot_exists {
         println!("Re-acquiring Godot...");
         acquire_from_release(
@@ -202,6 +200,15 @@ async fn ensure_release(client: &Client, release: &Release) -> Result<(), Box<dy
         )
         .await?;
     }
+    Ok(())
+}
+
+async fn ensure_backstitch_release(
+    client: &Client,
+    release: &Release,
+) -> Result<(), Box<dyn Error>> {
+    // we could check the plugin version file instead of just the directory's existence... but this is fine
+    let backstitch_exists = tokio::fs::try_exists(Path::new(PLUGIN_OUTPUT_DIR)).await?;
     if !backstitch_exists {
         println!("Re-acquiring Backstitch...");
         acquire_from_release(
@@ -212,6 +219,12 @@ async fn ensure_release(client: &Client, release: &Release) -> Result<(), Box<dy
         )
         .await?;
     }
+    Ok(())
+}
+
+async fn ensure_release(client: &Client, release: &Release) -> Result<(), Box<dyn Error>> {
+    ensure_godot_release(client, release).await?;
+    ensure_backstitch_release(client, release).await?;
     Ok(())
 }
 
@@ -293,15 +306,27 @@ pub async fn try_update(mut current_version: Option<String>) -> Result<(), Box<d
     if updating {
         overwrite_release(&client, &latest_release).await?;
     } else {
-        let current_release: Release = client
+        let replace_with_current_release = |e: reqwest::Error| {
+            println!("Error getting release {current_version}: {e}");
+            println!("Continuing with latest release...");
+            latest_release
+        };
+        let response = client
             .get(format!("{GITHUB_API}/tags/{current_version}"))
             .header("Accept", "application/vnd.github+json")
             .send()
-            .await?
-            .error_for_status()?
-            .json()
-            .await?;
+            .await;
 
+        let current_release = match response {
+            Ok(response) => match response.error_for_status() {
+                Ok(response) => response
+                    .json()
+                    .await
+                    .unwrap_or_else(replace_with_current_release),
+                Err(e) => replace_with_current_release(e),
+            },
+            Err(e) => replace_with_current_release(e),
+        };
         ensure_release(&client, &current_release).await?;
     }
 
