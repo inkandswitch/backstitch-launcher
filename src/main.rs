@@ -94,6 +94,17 @@ async fn main() -> ExitCode {
         }
     }
 
+    #[cfg(target_os = "linux")]
+    {
+        let cwd = env::current_dir().expect("Failed to get current directory");
+        let exe = env::current_exe().expect("Failed to get current executable");
+        let project_root = exe.parent().expect("Failed to get parent directory of current executable");
+        if cwd != project_root {
+            env::set_current_dir(project_root).expect("Failed to set current directory");
+            println!("Changed CWD from {:?} to {:?}", cwd, project_root);
+        }
+    }
+
     #[cfg(target_os = "macos")]
     {
         // change cwd from the .app bundle to the project root
