@@ -80,8 +80,22 @@ fn relaunch_in_terminal_linux() -> Result<(), ()> {
     return Err(())
 }
 
+fn fail() {
+    println!("Press Enter to continue...");
+    let mut input = String::new();
+    std::io::stdin().read_line(&mut input).unwrap();
+}
+
 #[tokio::main]
 async fn main() -> ExitCode {
+    // Temporary fix before moving to using main releases rather than custom packaging.
+    // Or we'd need to package .net versions as well...
+    if update::is_dotnet() {
+        println!("Found Dotnet project files. Dotnet builds are not yet supported.");
+        fail();
+        return ExitCode::FAILURE;
+    }
+
     // Hacky fix to ensure we always launch a terminal for Godot. 
     // Queries a bunch of common terminal emulators...
     // If someone doesn't have any of these available... hopefully they know how to run it from the terminal.
@@ -132,9 +146,7 @@ async fn main() -> ExitCode {
     let res = download_and_launch().await;
     // pause in case of error, so we can read it
     if let Err(_) = res {
-        println!("Press Enter to continue...");
-        let mut input = String::new();
-        std::io::stdin().read_line(&mut input).unwrap();
+        fail();
         return ExitCode::FAILURE;
     }
     return ExitCode::SUCCESS;
