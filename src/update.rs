@@ -16,6 +16,7 @@ const VERSION_FILE: &str = ".backstitch_version";
 const GODOT_OUTPUT_DIR: &str = "./godot_editor";
 const PLUGIN_ARTIFACT_PREFIX: &str = "backstitch";
 const PLUGIN_OUTPUT_DIR: &str = "./addons/backstitch";
+const CS_EXTS: [&str; 2] = ["csproj", "sln"];
 
 #[derive(Debug, Deserialize)]
 struct Release {
@@ -111,16 +112,47 @@ pub async fn get_current_version() -> Option<String> {
     };
 }
 
+pub fn is_dotnet() -> bool {
+    // Iterate root files
+    let entries = std::fs::read_dir(".").unwrap();
+    for entry in entries {
+        let entry = entry.unwrap();
+        let path = entry.path();
+        if path.is_file() {
+            if let Some(ext) = path.extension() {
+                if CS_EXTS.contains(&ext.to_str().unwrap_or_default()) {
+                    return true;
+                }
+            }
+        }
+    }
+    return false;
+}
+
 pub fn get_godot_path() -> PathBuf {
-    let exe_name = if cfg!(target_os = "windows") {
-        "godot.windows.editor.x86_64.exe"
-    } else if cfg!(target_os = "linux") {
-        "godot.linuxbsd.editor.x86_64"
-    } else if cfg!(target_os = "macos") {
-        // Godot macOS builds are inside an .app bundle
-        "godot_macos_editor.app/Contents/MacOS/Godot"
+    let exe_name = if is_dotnet() {
+        // Assuming we're inside the archive
+        if cfg!(target_os = "windows") {
+            "Godot_v4.7-stable_mono_win64.exe"
+        } else if cfg!(target_os = "linux") {
+            "Godot_v4.7-stable_mono_linux.x86_64"
+        } else if cfg!(target_os = "macos") {
+            // Godot macOS builds are inside an .app bundle
+            "Godot_mono.app/Contents/MacOS/Godot"
+        } else {
+            panic!("Unsupported OS");
+        }
     } else {
-        panic!("Unsupported OS");
+        if cfg!(target_os = "windows") {
+            "godot.windows.editor.x86_64.exe"
+        } else if cfg!(target_os = "linux") {
+            "godot.linuxbsd.editor.x86_64"
+        } else if cfg!(target_os = "macos") {
+            // Godot macOS builds are inside an .app bundle
+            "godot_macos_editor.app/Contents/MacOS/Godot"
+        } else {
+            panic!("Unsupported OS");
+        }
     };
 
     return std::env::current_dir()
