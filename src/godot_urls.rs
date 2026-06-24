@@ -3,6 +3,19 @@ use std::path::PathBuf;
 use reqwest::Url;
 use thiserror::Error;
 
+// This is specifically only for invalid configs; most configs will be valid
+#[allow(unused_macros)]
+macro_rules! platform_error {
+    () => {
+        compile_error!(concat!(
+            "unsupported platform: ",
+            env!("CARGO_CFG_TARGET_OS"),
+            ", ",
+            env!("CARGO_CFG_TARGET_ARCH"),
+        ));
+    };
+}
+
 #[derive(Error, Debug)]
 pub enum InfoError {
     #[error("malformed version {0}")]
@@ -45,7 +58,7 @@ fn godot_slug(dotnet: bool) -> String {
         all(target_os = "linux", target_arch = "x86_64") => if dotnet { "mono_linux_x86_64" } else { "linux.x86_64" },
         all(target_os = "linux", target_arch = "aarch64") => if dotnet { "mono_linux_arm64" } else { "linux.arm64" },
         target_os = "macos" => if dotnet { "mono_macos.universal" } else { "macos.universal" },
-        _ => compile_error!("unsupported platform!"),
+        _ => platform_error!(),
     }.to_owned()
 }
 
@@ -56,7 +69,7 @@ fn godot_platform() -> String {
         all(target_os = "linux", target_arch = "x86_64") => "linux.64",
         all(target_os = "linux", target_arch = "aarch64") => "linux.arm64",
         target_os = "macos" => "macos.universal",
-        _ => compile_error!("unsupported platform!"),
+        _ => platform_error!(),
     }
     .to_owned()
 }
@@ -72,7 +85,7 @@ fn godot_path(dotnet: bool, version: &str) -> PathBuf {
         all(target_os = "windows", target_arch = "aarch64") => "windows_arm64.exe",
         all(target_os = "linux", target_arch = "x86_64") => "linux.x86_64",
         all(target_os = "linux", target_arch = "aarch64") => "linux.arm64",
-        _ => compile_error!("unsupported platform!"),
+        _ => platform_error!(),
     }
     .to_owned();
 
