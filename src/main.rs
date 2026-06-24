@@ -109,6 +109,7 @@ async fn main() -> ExitCode {
 
     #[cfg(target_os = "linux")]
     {
+        use std::io::IsTerminal;
         // Hacky fix to ensure we always launch a terminal for Godot.
         // Queries a bunch of common terminal emulators...
         // If someone doesn't have any of these available... hopefully they know how to run it from the terminal.
