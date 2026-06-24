@@ -7,7 +7,7 @@ use toml::Table;
 use url::Url;
 
 #[derive(ValueEnum, Clone, Debug, Deserialize)]
-#[serde(rename_all = "kebab-case")]
+#[serde(rename_all = "snake_case")]
 pub enum UseDotnet {
     True,
     False,
@@ -15,7 +15,7 @@ pub enum UseDotnet {
 }
 
 #[derive(Parser, Debug, Deserialize)]
-#[serde(rename_all = "kebab-case")]
+#[serde(rename_all = "snake_case")]
 #[command(rename_all = "kebab-case")]
 pub struct CommandConfig {
     #[clap(help = "Whether we should download the .NET version of Godot. Defaults to auto.")]
