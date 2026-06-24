@@ -131,3 +131,22 @@ pub fn prompt_yes_no(prompt: &str) -> bool {
         }
     }
 }
+
+#[cfg(not(target_os = "windows"))]
+async fn make_folder_contents_executable(path: &Path) -> Result<(), Box<dyn Error>> {
+    let mut entries = fs::read_dir(path).await?;
+    while let Some(entry) = entries.next_entry().await? {
+        let path = entry.path();
+
+        if path.is_file() {
+            let metadata = fs::metadata(&path).await?;
+            let mut perms = metadata.permissions();
+
+            let mode = perms.mode();
+            perms.set_mode(mode | 0o111); // add execute bits
+            fs::set_permissions(&path, perms).await?;
+        }
+    }
+
+    Ok(())
+}
