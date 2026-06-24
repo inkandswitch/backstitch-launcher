@@ -50,6 +50,7 @@ pub enum ConfigError {
 }
 
 async fn get_file_config(file: &Path) -> Result<Option<CommandConfig>, ConfigError> {
+    println!("Trying to get Backstitch config from {file:?}");
     let file = match tokio::fs::read(file).await {
         Ok(bytes) => bytes,
         Err(e) => match e.kind() {
