@@ -71,7 +71,7 @@ async fn download_and_launch(config: &CommandConfig) -> Result<(), LauncherError
 
 #[cfg(target_os = "linux")]
 fn relaunch_in_terminal_linux() -> Result<(), ()> {
-    let exe = env::current_exe().expect("Failed to get current executable");
+    let exe = std::env::current_exe().expect("Failed to get current executable");
 
     // Try common terminal emulators
     let terminals = [
@@ -121,13 +121,13 @@ async fn main() -> ExitCode {
             }
         }
 
-        let cwd = env::current_dir().expect("Failed to get current directory");
-        let exe = env::current_exe().expect("Failed to get current executable");
+        let cwd = std::env::current_dir().expect("Failed to get current directory");
+        let exe = std::env::current_exe().expect("Failed to get current executable");
         let project_root = exe
             .parent()
             .expect("Failed to get parent directory of current executable");
         if cwd != project_root {
-            env::set_current_dir(project_root).expect("Failed to set current directory");
+            std::env::set_current_dir(project_root).expect("Failed to set current directory");
             println!("Changed CWD from {:?} to {:?}", cwd, project_root);
         }
     }
@@ -135,11 +135,11 @@ async fn main() -> ExitCode {
     #[cfg(target_os = "macos")]
     {
         // change cwd from the .app bundle to the project root
-        let mut cwd = env::current_dir().expect("Failed to get current directory");
+        let mut cwd = std::env::current_dir().expect("Failed to get current directory");
         println!("CWD: {:?}", cwd);
         if cwd.to_str().unwrap() == "/" {
             // change it to the executable's directory
-            let exe = env::current_exe().expect("Failed to get current executable");
+            let exe = std::env::current_exe().expect("Failed to get current executable");
             let exe_dir = exe.parent().expect("Failed to get parent directory");
             cwd = exe_dir.to_path_buf();
         }
@@ -156,7 +156,7 @@ async fn main() -> ExitCode {
                 .expect("Failed to get parent2 directory")
                 .parent()
                 .expect("Failed to get parent3 directory");
-            env::set_current_dir(project_root).expect("Failed to set current directory");
+            std::env::set_current_dir(project_root).expect("Failed to set current directory");
             println!("Changed CWD from {:?} to {:?}", cwd, project_root);
         } else {
             println!("Already in the project root");

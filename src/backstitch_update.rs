@@ -4,8 +4,6 @@ use reqwest::Client;
 use semver::Version;
 use serde::{Deserialize, Serialize};
 use std::io::IsTerminal;
-#[cfg(not(target_os = "windows"))]
-use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
 use std::{env, io};
 use tokio::fs;
@@ -210,7 +208,7 @@ pub async fn try_update(
     config: &CommandConfig,
     current_version: Option<&VersionFile>,
 ) -> Result<VersionFile, LauncherError> {
-    let temp_dir = env::temp_dir().join("backstitch_update");
+    let temp_dir = std::env::temp_dir().join("backstitch_update");
 
     println!("Querying GitHub for latest release...");
 

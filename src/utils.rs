@@ -1,6 +1,7 @@
-use std::{env, io::Write, path::Path, process::ExitStatus};
-
 use reqwest::Client;
+#[cfg(not(target_os = "windows"))]
+use std::os::unix::fs::PermissionsExt;
+use std::{io::Write, path::Path, process::ExitStatus};
 use tokio::{
     fs::{self},
     io::AsyncWriteExt,
@@ -93,7 +94,7 @@ pub async fn download_and_extract_file(
     url: &Url,
     output_dir: &Path,
 ) -> Result<(), LauncherError> {
-    let temp_dir = env::temp_dir().join("backstitch_update");
+    let temp_dir = std::env::temp_dir().join("backstitch_update");
     println!("Temp dir: {temp_dir:?}");
     ensure_empty_directory(&temp_dir).await?;
 
@@ -133,7 +134,7 @@ pub fn prompt_yes_no(prompt: &str) -> bool {
 }
 
 #[cfg(not(target_os = "windows"))]
-async fn make_folder_contents_executable(path: &Path) -> Result<(), Box<dyn Error>> {
+pub async fn make_folder_contents_executable(path: &Path) -> Result<(), GetError> {
     let mut entries = fs::read_dir(path).await?;
     while let Some(entry) = entries.next_entry().await? {
         let path = entry.path();
