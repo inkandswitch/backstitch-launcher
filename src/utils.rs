@@ -8,7 +8,7 @@ use tokio::{
 use url::Url;
 
 #[derive(thiserror::Error, Debug)]
-pub enum GetError {
+pub enum LauncherError {
     #[error("unknown {0}")]
     Unknown(String),
     #[error(
@@ -28,21 +28,21 @@ pub enum GetError {
     Exit(ExitStatus),
 }
 
-impl From<reqwest::Error> for GetError {
+impl From<reqwest::Error> for LauncherError {
     fn from(value: reqwest::Error) -> Self {
-        GetError::Unknown(value.to_string())
+        LauncherError::Unknown(value.to_string())
     }
 }
 
-impl From<std::io::Error> for GetError {
+impl From<std::io::Error> for LauncherError {
     fn from(value: std::io::Error) -> Self {
-        GetError::Unknown(value.to_string())
+        LauncherError::Unknown(value.to_string())
     }
 }
 
-impl From<zip::result::ZipError> for GetError {
+impl From<zip::result::ZipError> for LauncherError {
     fn from(value: zip::result::ZipError) -> Self {
-        GetError::Unknown(value.to_string())
+        LauncherError::Unknown(value.to_string())
     }
 }
 
@@ -52,7 +52,7 @@ pub fn fail() {
     std::io::stdin().read_line(&mut input).unwrap();
 }
 
-async fn ensure_empty_directory(path: &Path) -> Result<(), GetError> {
+async fn ensure_empty_directory(path: &Path) -> Result<(), LauncherError> {
     if path.exists() {
         fs::remove_dir_all(path).await?;
     }
@@ -60,7 +60,7 @@ async fn ensure_empty_directory(path: &Path) -> Result<(), GetError> {
     Ok(())
 }
 
-fn unzip_file(zip_path: &Path, dest: &Path) -> Result<(), GetError> {
+fn unzip_file(zip_path: &Path, dest: &Path) -> Result<(), LauncherError> {
     let file = std::fs::File::open(zip_path)?;
     let mut archive = zip::ZipArchive::new(file)?;
 
@@ -92,7 +92,7 @@ pub async fn download_and_extract_file(
     client: &Client,
     url: &Url,
     output_dir: &Path,
-) -> Result<(), GetError> {
+) -> Result<(), LauncherError> {
     let temp_dir = env::temp_dir().join("backstitch_update");
     println!("Temp dir: {temp_dir:?}");
     ensure_empty_directory(&temp_dir).await?;
