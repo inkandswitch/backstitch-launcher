@@ -1,4 +1,6 @@
 use reqwest::Client;
+#[cfg(target_os = "macos")]
+use std::path::PathBuf;
 use std::process::{Command, ExitCode};
 
 use crate::config::CommandConfig;
@@ -70,8 +72,10 @@ async fn download_and_launch(config: &CommandConfig) -> Result<(), LauncherError
 }
 
 #[cfg(target_os = "linux")]
-fn relaunch_in_terminal_linux() -> Result<(), ()> {
-    let exe = std::env::current_exe().expect("Failed to get current executable");
+fn relaunch_in_terminal(cwd: &Path, exe: &Path) -> Result<(), ()> {
+    // Hacky fix to ensure we always launch a terminal for Godot.
+    // Queries a bunch of common terminal emulators...
+    // If someone doesn't have any of these available... hopefully they know how to run it from the terminal.
 
     // Try common terminal emulators
     let terminals = [
@@ -85,7 +89,11 @@ fn relaunch_in_terminal_linux() -> Result<(), ()> {
     ];
 
     for (term, args) in terminals {
-        let result = Command::new(term).args(args).arg(&exe).spawn();
+        let result = Command::new(term)
+            .args(args)
+            .arg(exe)
+            .current_dir(cwd)
+            .spawn();
 
         if result.is_ok() {
             return Ok(());
@@ -93,6 +101,35 @@ fn relaunch_in_terminal_linux() -> Result<(), ()> {
     }
 
     eprintln!("Failed to find a terminal emulator.");
+    Err(())
+}
+
+#[cfg(target_os = "macos")]
+fn relaunch_in_terminal(cwd: &PathBuf, exe: &PathBuf) -> Result<(), ()> {
+    std::env::set_current_dir(cwd).expect("Failed to set current directory");
+    let result = Command::new("open")
+        .arg("-a")
+        .arg("Terminal")
+        .arg(exe)
+        .current_dir(cwd)
+        .spawn();
+    if result.is_ok() {
+        return Ok(());
+    }
+
+    eprintln!("Failed to launch terminal: {result:?}");
+    Err(())
+}
+
+#[cfg(target_os = "windows")]
+fn relaunch_in_terminal(cwd: &PathBuf, exe: &PathBuf) -> Result<(), ()> {
+    // change cwd to the cwd param
+    std::env::set_current_dir(cwd).expect("Failed to set current directory");
+    let result = Command::new(exe).spawn();
+    if result.is_ok() {
+        return Ok(());
+    }
+    eprintln!("Failed to launch terminal: {result:?}");
     Err(())
 }
 
@@ -106,24 +143,14 @@ async fn main() -> ExitCode {
             return ExitCode::FAILURE;
         }
     };
+    let (mut cwd, mut exe) = {
+        let cwd = std::env::current_dir().expect("Failed to get current directory");
+        let exe = std::env::current_exe().expect("Failed to get current executable");
+        (cwd, exe)
+    };
 
     #[cfg(target_os = "linux")]
     {
-        use std::io::IsTerminal;
-        // Hacky fix to ensure we always launch a terminal for Godot.
-        // Queries a bunch of common terminal emulators...
-        // If someone doesn't have any of these available... hopefully they know how to run it from the terminal.
-        if !std::io::stdout().is_terminal() {
-            // do we actually want to give up here, or try launching in the background?
-            // giving up for now
-            match relaunch_in_terminal_linux() {
-                Ok(_) => return ExitCode::SUCCESS,
-                Err(_) => return ExitCode::FAILURE,
-            }
-        }
-
-        let cwd = std::env::current_dir().expect("Failed to get current directory");
-        let exe = std::env::current_exe().expect("Failed to get current executable");
         let project_root = exe
             .parent()
             .expect("Failed to get parent directory of current executable");
@@ -131,36 +158,47 @@ async fn main() -> ExitCode {
             std::env::set_current_dir(project_root).expect("Failed to set current directory");
             println!("Changed CWD from {:?} to {:?}", cwd, project_root);
         }
-    }
+        cwd = project_root;
+    };
 
     #[cfg(target_os = "macos")]
     {
         // change cwd from the .app bundle to the project root
-        let mut cwd = std::env::current_dir().expect("Failed to get current directory");
-        println!("CWD: {:?}", cwd);
-        if cwd.to_str().unwrap() == "/" {
-            // change it to the executable's directory
-            let exe = std::env::current_exe().expect("Failed to get current executable");
-            let exe_dir = exe.parent().expect("Failed to get parent directory");
-            cwd = exe_dir.to_path_buf();
-        }
-        // App translocation; we can't find the current directory, so we'll create a directory in the home directory
-        if cwd.starts_with("/private") {
-            cwd = untranslocator::resolve_translocated_path(&cwd)
+        if exe.starts_with("/private") {
+            exe = untranslocator::resolve_translocated_path(&exe)
                 .expect("Failed to resolve translocated path");
         }
-        if cwd.ends_with("Contents/MacOS") {
-            let project_root = cwd
+        let mut project_root = exe
+            .parent()
+            .expect("Failed to get parent directory")
+            .to_path_buf();
+        if project_root.ends_with("Contents/MacOS") {
+            project_root = project_root
                 .parent()
                 .expect("Failed to get parent directory")
                 .parent()
                 .expect("Failed to get parent2 directory")
                 .parent()
-                .expect("Failed to get parent3 directory");
-            std::env::set_current_dir(project_root).expect("Failed to set current directory");
+                .expect("Failed to get parent3 directory")
+                .to_path_buf();
+        }
+        if project_root != cwd {
+            std::env::set_current_dir(&project_root).expect("Failed to set current directory");
             println!("Changed CWD from {:?} to {:?}", cwd, project_root);
-        } else {
-            println!("Already in the project root");
+        }
+        cwd = project_root;
+    };
+
+    #[cfg(any(target_os = "linux", target_os = "macos"))]
+    {
+        use std::io::IsTerminal;
+        if !std::io::stdout().is_terminal() {
+            // do we actually want to give up here, or try launching in the background?
+            // giving up for now
+            match relaunch_in_terminal(&cwd, &exe) {
+                Ok(_) => return ExitCode::SUCCESS,
+                Err(_) => return ExitCode::FAILURE,
+            }
         }
     }
 
