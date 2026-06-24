@@ -52,8 +52,13 @@ pub async fn try_update(
     }
 
     println!("Re-acquiring Godot...");
-    utils::download_and_extract_file(client, &godot_info.url, &PathBuf::from(GODOT_OUTPUT_DIR))
-        .await?;
+    utils::download_and_extract_file(
+        client,
+        &godot_info.url,
+        &PathBuf::from(GODOT_OUTPUT_DIR),
+        godot_info.nested,
+    )
+    .await?;
 
     #[cfg(not(target_os = "windows"))]
     utils::make_folder_contents_executable(&PathBuf::from(GODOT_OUTPUT_DIR)).await?;
