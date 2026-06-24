@@ -93,7 +93,7 @@ fn relaunch_in_terminal_linux() -> Result<(), ()> {
     }
 
     eprintln!("Failed to find a terminal emulator.");
-    return Err(());
+    Err(())
 }
 
 #[tokio::main]
