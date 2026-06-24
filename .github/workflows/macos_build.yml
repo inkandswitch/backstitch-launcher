@@ -10,13 +10,13 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
       - name: Restore Cache
         uses: Swatinem/rust-cache@v2
         with:
           prefix-key: "backstitch-launcher-macos-build"
-
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
 
       - name: Add macOS targets
         run: |
@@ -24,7 +24,7 @@ jobs:
           rustup target add aarch64-apple-darwin
 
       - name: Install cargo-bundle
-        run: cargo install --force cargo-bundle
+        run: cargo install cargo-bundle
 
       - name: Build macOS universal binary
         run: |
