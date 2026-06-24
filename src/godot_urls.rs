@@ -62,9 +62,11 @@ fn godot_platform() -> String {
     .to_owned()
 }
 
-fn godot_path(dotnet: bool, version: &str) -> PathBuf {
+fn godot_path(dotnet: bool, _version: &str) -> PathBuf {
     // this is a THIRD platform slug variant
-    let platform = cfg_select! {
+    // We don't use the formatting logic for macos, so silence the warnings about unreachable code
+    #[allow(unreachable_code)]
+    let _platform = cfg_select! {
         all(target_os = "windows", target_arch = "x86_64") => "win64.exe",
         all(target_os = "windows", target_arch = "aarch64") => "windows_arm64.exe",
         all(target_os = "linux", target_arch = "x86_64") => "linux.x86_64",
@@ -80,5 +82,5 @@ fn godot_path(dotnet: bool, version: &str) -> PathBuf {
 
     let mono = if dotnet { "_mono" } else { "" };
 
-    PathBuf::from(format!("Godot_v{version}{mono}_{platform}"))
+    PathBuf::from(format!("Godot_v{_version}{mono}_{_platform}"))
 }
