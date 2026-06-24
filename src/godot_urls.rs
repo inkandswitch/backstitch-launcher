@@ -69,7 +69,11 @@ fn godot_path(dotnet: bool, version: &str) -> PathBuf {
         all(target_os = "windows", target_arch = "aarch64") => "windows_arm64.exe",
         all(target_os = "linux", target_arch = "x86_64") => "linux.x86_64",
         all(target_os = "linux", target_arch = "aarch64") => "linux.arm64",
-        all(target_os = "macos") => return PathBuf::from("Godot_mono.app/Contents/MacOS/Godot"),
+        all(target_os = "macos") => return if dotnet {
+                PathBuf::from("Godot_mono.app/Contents/MacOS/Godot")
+            } else {
+                PathBuf::from("Godot.app/Contents/MacOS/Godot")
+            },
         _ => compile_error!("unsupported platform!"),
     }
     .to_owned();
