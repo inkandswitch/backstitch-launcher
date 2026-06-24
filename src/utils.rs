@@ -23,6 +23,8 @@ pub enum LauncherError {
         Update at https://backstitch.dev/docs/installation/launcher"
     )]
     OutOfDate,
+    #[error("Unsupported version of Backstitch: {0}")]
+    TooOld(String),
     #[error("the release had no attached metadata, or the metadata was invalid: {0}")]
     BadMetadata(String),
     #[error("the version file was not found (this is OK)")]
