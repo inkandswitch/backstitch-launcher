@@ -1,1 +1,6 @@
 /target
+
+# ignore stuff when accidentally running the launcher on root
+.backstitch_version
+/addons
+/godot_editor

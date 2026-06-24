@@ -71,7 +71,7 @@ async fn acquire_from_release(
             "Asset containing {prefix} not found"
         )))?;
 
-    utils::download_and_extract_file(client, &asset.browser_download_url, output_dir).await
+    utils::download_and_extract_file(client, &asset.browser_download_url, output_dir, false).await
 }
 
 async fn ensure_release(client: &Client, release: &Release) -> Result<(), LauncherError> {
@@ -135,7 +135,7 @@ async fn get_latest_release_or_prerelease(client: &Client) -> Result<Release, La
 
 fn extract_release_metadata(release: &Release) -> Result<ReleaseMetadata, LauncherError> {
     let re =
-        Regex::new(r"<!--\s*BEGIN_RELEASE_METADATA\s+(\{.*?\})\s+END_RELEASE_METADATA\s*-->/gmus")
+        Regex::new(r"(?ms)<!--\s*BEGIN_RELEASE_METADATA\s+(\{.*?\})\s+END_RELEASE_METADATA\s*-->")
             .unwrap();
     let caps = re
         .captures(&release.body)

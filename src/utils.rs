@@ -1,7 +1,13 @@
+use futures::StreamExt;
+use indicatif::{ProgressBar, ProgressStyle};
 use reqwest::Client;
 #[cfg(not(target_os = "windows"))]
 use std::os::unix::fs::PermissionsExt;
-use std::{io::Write, path::Path, process::ExitStatus};
+use std::{
+    io::Write,
+    path::{Path, PathBuf},
+    process::ExitStatus,
+};
 use tokio::{
     fs::{self},
     io::AsyncWriteExt,
@@ -17,15 +23,15 @@ pub enum LauncherError {
         Update at https://backstitch.dev/docs/installation/launcher"
     )]
     OutOfDate,
-    #[error("the release had no attached metadata, or the metadata was invalid {0}")]
+    #[error("the release had no attached metadata, or the metadata was invalid: {0}")]
     BadMetadata(String),
     #[error("the version file was not found (this is OK)")]
     NotInstalled,
     #[error("the version file was malformed")]
     BadVersionFile(String),
-    #[error("there was a problem launching Godot {0}")]
+    #[error("there was a problem launching Godot: {0}")]
     Launch(String),
-    #[error("Godot exited with error code {0}")]
+    #[error("Godot exited with error code: {0}")]
     Exit(ExitStatus),
 }
 
@@ -61,13 +67,25 @@ async fn ensure_empty_directory(path: &Path) -> Result<(), LauncherError> {
     Ok(())
 }
 
-fn unzip_file(zip_path: &Path, dest: &Path) -> Result<(), LauncherError> {
+fn unzip_file(zip_path: &Path, dest: &Path, skip_root_dir: bool) -> Result<(), LauncherError> {
     let file = std::fs::File::open(zip_path)?;
     let mut archive = zip::ZipArchive::new(file)?;
 
     for i in 0..archive.len() {
         let mut file = archive.by_index(i)?;
-        let out_path = dest.join(file.name());
+        let Some(name) = file.enclosed_name() else {
+            continue;
+        };
+
+        let out_path = if skip_root_dir {
+            let oneup = name.components().skip(1).collect::<PathBuf>();
+            if oneup.as_os_str().is_empty() {
+                continue;
+            }
+            dest.join(oneup)
+        } else {
+            dest.join(name)
+        };
 
         if file.is_dir() {
             std::fs::create_dir_all(&out_path)?;
@@ -93,9 +111,9 @@ pub async fn download_and_extract_file(
     client: &Client,
     url: &Url,
     output_dir: &Path,
+    skip_root_dir: bool,
 ) -> Result<(), LauncherError> {
     let temp_dir = std::env::temp_dir().join("backstitch_update");
-    println!("Temp dir: {temp_dir:?}");
     ensure_empty_directory(&temp_dir).await?;
 
     let response = client
@@ -103,16 +121,36 @@ pub async fn download_and_extract_file(
         .send()
         .await?
         .error_for_status()?;
-    let bytes = response.bytes().await?;
 
-    println!("Downloading asset...");
+    let total_size = response.content_length().unwrap_or(0);
+    let pb = ProgressBar::new(total_size);
+    pb.set_style(
+        ProgressStyle::with_template(
+            "{spinner:.green} [{elapsed_precise}] [{bar:40.cyan/blue}] \
+            {bytes}/{total_bytes} ({eta})",
+        )
+        .unwrap()
+        .progress_chars("#>-"),
+    );
+
+    let mut bytes = Vec::with_capacity(total_size as usize);
+    let mut stream = response.bytes_stream();
+
+    while let Some(chunk) = stream.next().await {
+        let chunk = chunk?;
+        bytes.extend_from_slice(&chunk);
+        pb.inc(chunk.len() as u64);
+    }
+
+    pb.finish_with_message("Download complete");
+
     let temp_filepath = temp_dir.join("download.zip");
     let mut temp_file = fs::File::create(&temp_filepath).await?;
     temp_file.write_all(&bytes).await?;
 
     println!("Extracting to {output_dir:?}...");
     ensure_empty_directory(output_dir).await?;
-    unzip_file(&temp_filepath, output_dir)?;
+    unzip_file(&temp_filepath, output_dir, skip_root_dir)?;
 
     Ok(())
 }
