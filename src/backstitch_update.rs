@@ -137,6 +137,15 @@ fn extract_release_metadata(release: &Release) -> Result<ReleaseMetadata, Launch
     let re =
         Regex::new(r"(?ms)<!--\s*BEGIN_RELEASE_METADATA\s+(\{.*?\})\s+END_RELEASE_METADATA\s*-->")
             .unwrap();
+    if !release.body.contains("BEGIN_RELEASE_METADATA") {
+        if release.tag_name.starts_with("v1") {
+            return Err(LauncherError::TooOld(release.tag_name.clone()));
+        }
+        // All new releases should have this, so throw an error
+        return Err(LauncherError::BadMetadata(
+            "No release metadata found".to_string(),
+        ));
+    }
     let caps = re
         .captures(&release.body)
         .ok_or_else(|| LauncherError::BadMetadata("could not apply regex".to_string()))?;
@@ -218,7 +227,17 @@ pub async fn try_update(
         get_latest_release(client).await?
     };
 
-    let latest_metadata = extract_release_metadata(&latest_release)?;
+    let latest_metadata = match extract_release_metadata(&latest_release) {
+        Ok(metadata) => metadata,
+        Err(LauncherError::TooOld(version)) => {
+            println!("ERROR: No supported versions available for Backstitch!");
+            println!("Please relaunch with the --allow-prerelease=true flag to continue.");
+            return Err(LauncherError::TooOld(version));
+        }
+        Err(e) => {
+            return Err(LauncherError::Unknown(e.to_string()));
+        }
+    };
     check_release(&latest_metadata)?;
 
     let latest_version = latest_release.tag_name.clone();
