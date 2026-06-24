@@ -59,25 +59,6 @@ pub async fn get_current_version() -> Result<VersionFile, LauncherError> {
     serde_json::from_slice(&version_file).map_err(|e| LauncherError::BadVersionFile(e.to_string()))
 }
 
-#[cfg(not(target_os = "windows"))]
-async fn make_folder_contents_executable(path: &Path) -> Result<(), Box<dyn Error>> {
-    let mut entries = fs::read_dir(path).await?;
-    while let Some(entry) = entries.next_entry().await? {
-        let path = entry.path();
-
-        if path.is_file() {
-            let metadata = fs::metadata(&path).await?;
-            let mut perms = metadata.permissions();
-
-            let mode = perms.mode();
-            perms.set_mode(mode | 0o111); // add execute bits
-            fs::set_permissions(&path, perms).await?;
-        }
-    }
-
-    Ok(())
-}
-
 async fn acquire_from_release(
     client: &Client,
     release: &Release,
@@ -275,9 +256,6 @@ pub async fn try_update(
     } else {
         ensure_release(client, &desired_release).await?;
     }
-
-    #[cfg(not(target_os = "windows"))]
-    make_folder_contents_executable(Path::new(GODOT_OUTPUT_DIR)).await?;
 
     let new_version = VersionFile {
         godot_version: desired_metadata.recommended_godot,
