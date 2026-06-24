@@ -13,7 +13,7 @@ use tokio::io::AsyncWriteExt;
 use url::Url;
 
 use crate::config::CommandConfig;
-use crate::utils::{self, GetError};
+use crate::utils::{self, LauncherError};
 
 const GITHUB_API: &str = "https://api.github.com/repos/inkandswitch/backstitch/releases";
 
@@ -42,21 +42,21 @@ struct ReleaseMetadata {
     minimum_launcher: String,
 }
 
-pub async fn get_current_version() -> Result<VersionFile, GetError> {
+pub async fn get_current_version() -> Result<VersionFile, LauncherError> {
     let version_file = match fs::read(VERSION_FILE).await {
         Ok(bytes) => bytes,
         Err(e) => {
             return Err(match e.kind() {
                 io::ErrorKind::NotFound => {
                     println!("Backstitch is not currently installed.");
-                    GetError::NotInstalled
+                    LauncherError::NotInstalled
                 }
-                _ => GetError::Unknown(e.to_string()),
+                _ => LauncherError::Unknown(e.to_string()),
             });
         }
     };
 
-    serde_json::from_slice(&version_file).map_err(|e| GetError::BadVersionFile(e.to_string()))
+    serde_json::from_slice(&version_file).map_err(|e| LauncherError::BadVersionFile(e.to_string()))
 }
 
 #[cfg(not(target_os = "windows"))]
@@ -83,19 +83,19 @@ async fn acquire_from_release(
     release: &Release,
     output_dir: &Path,
     prefix: &String,
-) -> Result<(), GetError> {
+) -> Result<(), LauncherError> {
     let asset = release
         .assets
         .iter()
         .find(|a| a.name.contains(prefix.as_str()))
-        .ok_or(GetError::Unknown(format!(
+        .ok_or(LauncherError::Unknown(format!(
             "Asset containing {prefix} not found"
         )))?;
 
     utils::download_and_extract_file(client, &asset.browser_download_url, output_dir).await
 }
 
-async fn ensure_release(client: &Client, release: &Release) -> Result<(), GetError> {
+async fn ensure_release(client: &Client, release: &Release) -> Result<(), LauncherError> {
     // we could check the plugin version file instead of just the directory's existence... but this is fine
     let backstitch_exists = tokio::fs::try_exists(Path::new(PLUGIN_OUTPUT_DIR)).await?;
     if !backstitch_exists {
@@ -111,7 +111,7 @@ async fn ensure_release(client: &Client, release: &Release) -> Result<(), GetErr
     Ok(())
 }
 
-async fn overwrite_release(client: &Client, release: &Release) -> Result<(), GetError> {
+async fn overwrite_release(client: &Client, release: &Release) -> Result<(), LauncherError> {
     acquire_from_release(
         client,
         release,
@@ -127,7 +127,7 @@ fn is_dev_version(version: &str) -> bool {
     version.contains("/")
 }
 
-async fn get_latest_release(client: &Client) -> Result<Release, GetError> {
+async fn get_latest_release(client: &Client) -> Result<Release, LauncherError> {
     Ok(client
         .get(format!("{GITHUB_API}/latest"))
         .header("Accept", "application/vnd.github+json")
@@ -138,7 +138,7 @@ async fn get_latest_release(client: &Client) -> Result<Release, GetError> {
         .await?)
 }
 
-async fn get_latest_release_or_prerelease(client: &Client) -> Result<Release, GetError> {
+async fn get_latest_release_or_prerelease(client: &Client) -> Result<Release, LauncherError> {
     let releases: Vec<Release> = client
         .get(GITHUB_API)
         .header("Accept", "application/vnd.github+json")
@@ -151,35 +151,35 @@ async fn get_latest_release_or_prerelease(client: &Client) -> Result<Release, Ge
     let release = releases
         .into_iter()
         .max_by_key(|release| release.published_at);
-    release.ok_or_else(|| GetError::Unknown("No releases found".to_string()))
+    release.ok_or_else(|| LauncherError::Unknown("No releases found".to_string()))
 }
 
-fn extract_release_metadata(release: &Release) -> Result<ReleaseMetadata, GetError> {
+fn extract_release_metadata(release: &Release) -> Result<ReleaseMetadata, LauncherError> {
     let re =
         Regex::new(r"<!--\s*BEGIN_RELEASE_METADATA\s+(\{.*?\})\s+END_RELEASE_METADATA\s*-->/gmus")
             .unwrap();
     let caps = re
         .captures(&release.body)
-        .ok_or_else(|| GetError::BadMetadata("could not apply regex".to_string()))?;
+        .ok_or_else(|| LauncherError::BadMetadata("could not apply regex".to_string()))?;
     let cap = caps
         .get(1)
-        .ok_or_else(|| GetError::BadMetadata("could not get capture".to_string()))?
+        .ok_or_else(|| LauncherError::BadMetadata("could not get capture".to_string()))?
         .as_str();
-    serde_json::from_str(cap).map_err(|e| GetError::BadMetadata(e.to_string()))
+    serde_json::from_str(cap).map_err(|e| LauncherError::BadMetadata(e.to_string()))
 }
 
-fn check_release(metadata: &ReleaseMetadata) -> Result<(), GetError> {
-    let version =
-        Version::parse(env!("CARGO_PKG_VERSION")).map_err(|e| GetError::Unknown(e.to_string()))?;
+fn check_release(metadata: &ReleaseMetadata) -> Result<(), LauncherError> {
+    let version = Version::parse(env!("CARGO_PKG_VERSION"))
+        .map_err(|e| LauncherError::Unknown(e.to_string()))?;
     let min_version = Version::parse(metadata.minimum_launcher.trim_start_matches("v"))
-        .map_err(|e| GetError::BadMetadata(e.to_string()))?;
+        .map_err(|e| LauncherError::BadMetadata(e.to_string()))?;
     if version < min_version {
-        return Err(GetError::OutOfDate);
+        return Err(LauncherError::OutOfDate);
     }
     Ok(())
 }
 
-async fn get_release(client: &Client, version: &str) -> Result<Release, GetError> {
+async fn get_release(client: &Client, version: &str) -> Result<Release, LauncherError> {
     Ok(client
         .get(format!("{GITHUB_API}/tags/{version}"))
         .header("Accept", "application/vnd.github+json")
@@ -228,7 +228,7 @@ pub async fn try_update(
     client: &Client,
     config: &CommandConfig,
     current_version: Option<&VersionFile>,
-) -> Result<VersionFile, GetError> {
+) -> Result<VersionFile, LauncherError> {
     let temp_dir = env::temp_dir().join("backstitch_update");
 
     println!("Querying GitHub for latest release...");
@@ -289,7 +289,7 @@ pub async fn try_update(
     version_file
         .write_all(
             serde_json::to_string(&new_version)
-                .map_err(|e| GetError::Unknown(e.to_string()))?
+                .map_err(|e| LauncherError::Unknown(e.to_string()))?
                 .as_bytes(),
         )
         .await?;

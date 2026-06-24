@@ -6,7 +6,7 @@ use tokio::fs;
 use crate::{
     config::{CommandConfig, UseDotnet},
     godot_urls::get_godot_info,
-    utils::{self, GetError},
+    utils::{self, LauncherError},
 };
 
 const GODOT_OUTPUT_DIR: &str = "./godot_editor";
@@ -17,7 +17,7 @@ pub async fn try_update(
     config: &CommandConfig,
     old_version: Option<&str>,
     new_version: &str,
-) -> Result<PathBuf, GetError> {
+) -> Result<PathBuf, LauncherError> {
     if let Some(path) = &config.godot_path {
         println!("Trying to use existing copy of Godot from {path:?}...");
         return Ok(path.clone());
@@ -30,7 +30,7 @@ pub async fn try_update(
     };
 
     let mut godot_info =
-        get_godot_info(new_version, dotnet).map_err(|e| GetError::Unknown(e.to_string()))?;
+        get_godot_info(new_version, dotnet).map_err(|e| LauncherError::Unknown(e.to_string()))?;
 
     if let Some(url) = config.godot_url.clone() {
         println!("Using Godot URL override: {url}");
@@ -59,7 +59,7 @@ pub async fn try_update(
     Ok(exe_path)
 }
 
-pub async fn is_dotnet() -> Result<bool, GetError> {
+pub async fn is_dotnet() -> Result<bool, LauncherError> {
     // Iterate root files
     let mut entries = fs::read_dir(".").await?;
     while let Ok(Some(entry)) = entries.next_entry().await {

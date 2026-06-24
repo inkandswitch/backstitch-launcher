@@ -2,7 +2,7 @@ use reqwest::Client;
 use std::process::{Command, ExitCode};
 
 use crate::config::CommandConfig;
-use crate::utils::{GetError, fail};
+use crate::utils::{LauncherError, fail};
 
 pub mod backstitch_update;
 pub mod config;
@@ -10,13 +10,13 @@ pub mod godot_update;
 pub mod godot_urls;
 pub mod utils;
 
-async fn download_and_launch(config: &CommandConfig) -> Result<(), GetError> {
+async fn download_and_launch(config: &CommandConfig) -> Result<(), LauncherError> {
     let current_version = backstitch_update::get_current_version().await;
 
     let client = Client::builder()
         .user_agent("backstitch-launcher")
         .build()
-        .map_err(|e| GetError::Unknown(e.to_string()))?;
+        .map_err(|e| LauncherError::Unknown(e.to_string()))?;
 
     let new_version =
         match backstitch_update::try_update(&client, config, current_version.as_ref().ok()).await {
@@ -56,14 +56,14 @@ async fn download_and_launch(config: &CommandConfig) -> Result<(), GetError> {
     {
         Err(e) => {
             println!("Failed to launch Godot: {e}");
-            Err(GetError::Launch(e.to_string()))
+            Err(LauncherError::Launch(e.to_string()))
         }
         Ok(status) => {
             if status.success() {
                 println!("Godot editor launched successfully.");
                 Ok(())
             } else {
-                Err(GetError::Exit(status))
+                Err(LauncherError::Exit(status))
             }
         }
     }
