@@ -1,9 +1,11 @@
 use std::{env, io::Write, path::Path, process::ExitStatus};
 
 use reqwest::Client;
-use tokio::{fs::{self}, io::AsyncWriteExt};
+use tokio::{
+    fs::{self},
+    io::AsyncWriteExt,
+};
 use url::Url;
-
 
 #[derive(thiserror::Error, Debug)]
 pub enum GetError {
@@ -44,13 +46,11 @@ impl From<zip::result::ZipError> for GetError {
     }
 }
 
-
 pub fn fail() {
     println!("Press Enter to continue...");
     let mut input = String::new();
     std::io::stdin().read_line(&mut input).unwrap();
 }
-
 
 async fn ensure_empty_directory(path: &Path) -> Result<(), GetError> {
     if path.exists() {
@@ -88,12 +88,20 @@ fn unzip_file(zip_path: &Path, dest: &Path) -> Result<(), GetError> {
     Ok(())
 }
 
-pub async fn download_and_extract_file(client: &Client, url: &Url, output_dir: &Path) -> Result<(), GetError> {
+pub async fn download_and_extract_file(
+    client: &Client,
+    url: &Url,
+    output_dir: &Path,
+) -> Result<(), GetError> {
     let temp_dir = env::temp_dir().join("backstitch_update");
     println!("Temp dir: {temp_dir:?}");
     ensure_empty_directory(&temp_dir).await?;
-    
-    let response = client.get(url.to_string()).send().await?.error_for_status()?;
+
+    let response = client
+        .get(url.to_string())
+        .send()
+        .await?
+        .error_for_status()?;
     let bytes = response.bytes().await?;
 
     println!("Downloading asset...");

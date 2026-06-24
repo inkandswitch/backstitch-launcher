@@ -76,5 +76,5 @@ pub async fn is_dotnet() -> Result<bool, GetError> {
         }
     }
 
-    return Ok(false);
+    Ok(false)
 }

@@ -3,7 +3,6 @@ use regex::Regex;
 use reqwest::Client;
 use semver::Version;
 use serde::{Deserialize, Serialize};
-use url::Url;
 use std::io::IsTerminal;
 #[cfg(not(target_os = "windows"))]
 use std::os::unix::fs::PermissionsExt;
@@ -11,6 +10,7 @@ use std::path::Path;
 use std::{env, io};
 use tokio::fs;
 use tokio::io::AsyncWriteExt;
+use url::Url;
 
 use crate::config::CommandConfig;
 use crate::utils::{self, GetError};
@@ -102,7 +102,7 @@ async fn ensure_release(client: &Client, release: &Release) -> Result<(), GetErr
         println!("Re-acquiring Backstitch...");
         acquire_from_release(
             client,
-            &release,
+            release,
             Path::new(PLUGIN_OUTPUT_DIR),
             &PLUGIN_ARTIFACT_PREFIX.to_string(),
         )
@@ -114,7 +114,7 @@ async fn ensure_release(client: &Client, release: &Release) -> Result<(), GetErr
 async fn overwrite_release(client: &Client, release: &Release) -> Result<(), GetError> {
     acquire_from_release(
         client,
-        &release,
+        release,
         Path::new(PLUGIN_OUTPUT_DIR),
         &PLUGIN_ARTIFACT_PREFIX.to_string(),
     )
@@ -156,7 +156,7 @@ async fn get_latest_release_or_prerelease(client: &Client) -> Result<Release, Ge
 
 fn extract_release_metadata(release: &Release) -> Result<ReleaseMetadata, GetError> {
     let re =
-        Regex::new(r"<!--\s*BEGIN_RELEASE_METADATA\s+({.*?})\s+END_RELEASE_METADATA\s*-->/gmus")
+        Regex::new(r"<!--\s*BEGIN_RELEASE_METADATA\s+(\{.*?\})\s+END_RELEASE_METADATA\s*-->/gmus")
             .unwrap();
     let caps = re
         .captures(&release.body)
@@ -165,7 +165,7 @@ fn extract_release_metadata(release: &Release) -> Result<ReleaseMetadata, GetErr
         .get(1)
         .ok_or_else(|| GetError::BadMetadata("could not get capture".to_string()))?
         .as_str();
-    Ok(serde_json::from_str(cap).map_err(|e| GetError::BadMetadata(e.to_string()))?)
+    serde_json::from_str(cap).map_err(|e| GetError::BadMetadata(e.to_string()))
 }
 
 fn check_release(metadata: &ReleaseMetadata) -> Result<(), GetError> {
@@ -234,9 +234,9 @@ pub async fn try_update(
     println!("Querying GitHub for latest release...");
 
     let latest_release = if config.allow_prerelease.unwrap_or(false) {
-        get_latest_release_or_prerelease(&client).await?
+        get_latest_release_or_prerelease(client).await?
     } else {
-        get_latest_release(&client).await?
+        get_latest_release(client).await?
     };
 
     let latest_metadata = extract_release_metadata(&latest_release)?;
@@ -254,7 +254,7 @@ pub async fn try_update(
         latest_release
     } else {
         // If the current release isn't actually a valid version from Github, force the update
-        match get_release(&client, &desired_version).await {
+        match get_release(client, &desired_version).await {
             // Just make sure we've gotten the current release OK
             Ok(release) => release,
             // Change our mind
@@ -271,9 +271,9 @@ pub async fn try_update(
     check_release(&desired_metadata)?;
 
     if current_version.is_none_or(|v| v.backstitch_version != desired_version) {
-        overwrite_release(&client, &desired_release).await?;
+        overwrite_release(client, &desired_release).await?;
     } else {
-        ensure_release(&client, &desired_release).await?;
+        ensure_release(client, &desired_release).await?;
     }
 
     #[cfg(not(target_os = "windows"))]

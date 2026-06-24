@@ -32,7 +32,7 @@ pub fn get_godot_info(version: &str, dotnet: bool) -> Result<GodotDownloadInfo, 
     let url = Url::parse(&format!(
         "https://downloads.godotengine.org/?version={short_version}&flavor={flavor}&slug={slug_prefix}{slug}.zip&platform={platform}"
     )).map_err(|e| InfoError::Unknown(e.to_string()))?;
-    let path = godot_path(dotnet, &version)?;
+    let path = godot_path(dotnet, version)?;
 
     Ok(GodotDownloadInfo {
         url,
@@ -81,5 +81,4 @@ fn godot_path(dotnet: bool, version: &str) -> Result<PathBuf, InfoError> {
     let mono = if dotnet { "_mono" } else { "" };
 
     Ok(PathBuf::from(format!("Godot_{version}{mono}_{platform}")))
-
 }

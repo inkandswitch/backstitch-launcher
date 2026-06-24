@@ -68,7 +68,7 @@ async fn get_file_config(file: &Path) -> Result<Option<CommandConfig>, ConfigErr
 
     match value.try_into() {
         Ok(content) => Ok(content),
-        Err(e) => return Err(ConfigError::FileParseError(e.to_string())),
+        Err(e) => Err(ConfigError::FileParseError(e.to_string())),
     }
 }
 
@@ -78,28 +78,28 @@ pub async fn setup_config() -> Result<CommandConfig, ConfigError> {
 
     // Command config always takes precedence. We fill in missing properties from the file, one by one.
     if let Some(file_config) = file_config {
-        if let Some(allow_prerelease) = file_config.allow_prerelease {
-            if command_config.allow_prerelease.is_none() {
-                command_config.allow_prerelease = Some(allow_prerelease);
-            }
+        if let Some(allow_prerelease) = file_config.allow_prerelease
+            && command_config.allow_prerelease.is_none()
+        {
+            command_config.allow_prerelease = Some(allow_prerelease);
         }
 
-        if let Some(godot_url) = file_config.godot_url {
-            if command_config.godot_url.is_none() {
-                command_config.godot_url = Some(godot_url);
-            }
+        if let Some(godot_url) = file_config.godot_url
+            && command_config.godot_url.is_none()
+        {
+            command_config.godot_url = Some(godot_url);
         }
 
-        if let Some(dotnet) = file_config.dotnet {
-            if command_config.dotnet.is_none() {
-                command_config.dotnet = Some(dotnet);
-            }
+        if let Some(dotnet) = file_config.dotnet
+            && command_config.dotnet.is_none()
+        {
+            command_config.dotnet = Some(dotnet);
         }
 
-        if let Some(godot_path) = file_config.godot_path {
-            if command_config.godot_path.is_none() {
-                command_config.godot_path = Some(godot_path);
-            }
+        if let Some(godot_path) = file_config.godot_path
+            && command_config.godot_path.is_none()
+        {
+            command_config.godot_path = Some(godot_path);
         }
     }
 
