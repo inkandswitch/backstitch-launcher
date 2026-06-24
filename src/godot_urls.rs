@@ -44,7 +44,7 @@ fn godot_slug(dotnet: bool) -> String {
         all(target_os = "windows", target_arch = "aarch64") => if dotnet { "mono_windows_arm64" } else { "windows_arm64" },
         all(target_os = "linux", target_arch = "x86_64") => if dotnet { "mono_linux_x86_64" } else { "linux.x86_64" },
         all(target_os = "linux", target_arch = "aarch64") => if dotnet { "mono_linux_arm64" } else { "linux.arm64" },
-        target_os = "macos" => if dotnet { "mono_macos.universal" } else { "macos.universal" },
+        all(target_os = "macos") => if dotnet { "mono_macos.universal" } else { "macos.universal" },
         _ => compile_error!("unsupported platform!"),
     }.to_owned()
 }
@@ -55,23 +55,20 @@ fn godot_platform() -> String {
         all(target_os = "windows", target_arch = "aarch64") => "windows.arm64",
         all(target_os = "linux", target_arch = "x86_64") => "linux.64",
         all(target_os = "linux", target_arch = "aarch64") => "linux.arm64",
-        target_os = "macos" => "macos.universal",
+        all(target_os = "macos") => "macos.universal",
         _ => compile_error!("unsupported platform!"),
     }
     .to_owned()
 }
 
 fn godot_path(dotnet: bool, version: &str) -> PathBuf {
-    if cfg!(target_os = "macos") {
-        return PathBuf::from("Godot_mono.app/Contents/MacOS/Godot");
-    }
-
     // this is a THIRD platform slug variant
     let platform = cfg_select! {
         all(target_os = "windows", target_arch = "x86_64") => "win64.exe",
         all(target_os = "windows", target_arch = "aarch64") => "windows_arm64.exe",
         all(target_os = "linux", target_arch = "x86_64") => "linux.x86_64",
         all(target_os = "linux", target_arch = "aarch64") => "linux.arm64",
+        all(target_os = "macos") => return PathBuf::from("Godot_mono.app/Contents/MacOS/Godot"),
         _ => compile_error!("unsupported platform!"),
     }
     .to_owned();
