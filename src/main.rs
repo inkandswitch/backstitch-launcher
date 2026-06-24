@@ -1,5 +1,4 @@
 use reqwest::Client;
-#[cfg(target_os = "macos")]
 use std::path::PathBuf;
 use std::process::{Command, ExitCode};
 
@@ -72,7 +71,7 @@ async fn download_and_launch(config: &CommandConfig) -> Result<(), LauncherError
 }
 
 #[cfg(target_os = "linux")]
-fn relaunch_in_terminal(cwd: &Path, exe: &Path) -> Result<(), ()> {
+fn relaunch_in_terminal(cwd: &PathBuf, exe: &PathBuf) -> Result<(), ()> {
     // Hacky fix to ensure we always launch a terminal for Godot.
     // Queries a bunch of common terminal emulators...
     // If someone doesn't have any of these available... hopefully they know how to run it from the terminal.
@@ -143,6 +142,7 @@ async fn main() -> ExitCode {
             return ExitCode::FAILURE;
         }
     };
+    #[allow(unused_mut)]
     let (mut cwd, mut exe) = {
         let cwd = std::env::current_dir().expect("Failed to get current directory");
         let exe = std::env::current_exe().expect("Failed to get current executable");
@@ -158,7 +158,7 @@ async fn main() -> ExitCode {
             std::env::set_current_dir(project_root).expect("Failed to set current directory");
             println!("Changed CWD from {:?} to {:?}", cwd, project_root);
         }
-        cwd = project_root;
+        cwd = project_root.to_path_buf();
     };
 
     #[cfg(target_os = "macos")]
@@ -168,10 +168,7 @@ async fn main() -> ExitCode {
             exe = untranslocator::resolve_translocated_path(&exe)
                 .expect("Failed to resolve translocated path");
         }
-        let mut project_root = exe
-            .parent()
-            .expect("Failed to get parent directory")
-            .to_path_buf();
+        let mut project_root = exe.parent().expect("Failed to get parent directory");
         if project_root.ends_with("Contents/MacOS") {
             project_root = project_root
                 .parent()
@@ -179,14 +176,13 @@ async fn main() -> ExitCode {
                 .parent()
                 .expect("Failed to get parent2 directory")
                 .parent()
-                .expect("Failed to get parent3 directory")
-                .to_path_buf();
+                .expect("Failed to get parent3 directory");
         }
         if project_root != cwd {
             std::env::set_current_dir(&project_root).expect("Failed to set current directory");
             println!("Changed CWD from {:?} to {:?}", cwd, project_root);
         }
-        cwd = project_root;
+        cwd = project_root.to_path_buf();
     };
 
     #[cfg(any(target_os = "linux", target_os = "macos"))]
