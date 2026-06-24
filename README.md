@@ -25,7 +25,7 @@ Alternatively, you may include a section for configuration in your `backstitch.c
 ```toml
 [backstitch_launcher]
 dotnet="<auto|true|false>" # Whether to use the .NET build of Godot. If set to auto (default), it automatically checks for .NET build files and picks a .NET version if so.
-allow_prerelease="<true|false>" # Whether to allow downloading pre-release versions of Backstitch.
+allow_prerelease=<true|false> # Whether to allow downloading pre-release versions of Backstitch.
 godot_path="<GODOT_PATH>" # Skip the Godot download and open the exe from a path instead. 
 godot_url="<GODOT_URL>" # Specify a custom Godot URL to download from. Cross-platform support doesn't work, so it had better match your mono and platform versions!
 ```
