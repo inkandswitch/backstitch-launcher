@@ -1,29 +1,54 @@
-use std::env;
-use std::error::Error;
-use std::io::{self, IsTerminal};
+use reqwest::Client;
 use std::process::{Command, ExitCode};
 
-pub mod update;
+use crate::config::CommandConfig;
+use crate::utils::{GetError, fail};
 
-async fn download_and_launch() -> Result<(), Box<dyn Error>> {
-    let current_version = update::get_current_version().await;
-    let res = update::try_update(current_version.clone()).await;
+pub mod backstitch_update;
+pub mod config;
+pub mod godot_update;
+pub mod godot_urls;
+pub mod utils;
 
-    if let Err(e) = res {
-        if current_version.is_none() {
-            println!("Error during Backstitch download: {e}");
-            println!("Stopping.");
-            return Err(e);
-        } else {
-            println!("Error during Backstitch update: {e}");
-            println!("Attempting to launch old version...")
-        }
-    }
+async fn download_and_launch(config: &CommandConfig) -> Result<(), GetError> {
+    let current_version = backstitch_update::get_current_version().await;
 
-    let godot = update::get_godot_path();
+    let client = Client::builder()
+        .user_agent("backstitch-launcher")
+        .build()
+        .map_err(|e| GetError::Unknown(e.to_string()))?;
+
+    let new_version =
+        match backstitch_update::try_update(&client, config, current_version.as_ref().ok()).await {
+            Err(e) => match &current_version {
+                Err(_) => {
+                    println!("Error during Backstitch download: {e}");
+                    println!("Stopping.");
+                    return Err(e);
+                }
+                Ok(v) => {
+                    println!("Error during Backstitch update: {e}");
+                    println!("Attempting to launch old version...");
+                    v.clone()
+                }
+            },
+            Ok(v) => v,
+        };
+
+    let godot = godot_update::try_update(
+        &client,
+        config,
+        current_version
+            .ok()
+            .as_ref()
+            .map(|v| v.godot_version.as_str()),
+        &new_version.godot_version,
+    )
+    .await?;
+
     println!("Launching Godot from {:?}...", godot);
 
-    let code = match Command::new(godot)
+    match Command::new(godot)
         .arg("-e")
         .arg("--path")
         .arg(".")
@@ -31,26 +56,20 @@ async fn download_and_launch() -> Result<(), Box<dyn Error>> {
     {
         Err(e) => {
             println!("Failed to launch Godot: {e}");
-            return Err(Box::new(e));
+            Err(GetError::Launch(e.to_string()))
         }
-        Ok(status) => status,
-    };
-
-    if code.success() {
-        println!("Godot editor launched successfully.");
-    } else {
-        let err = io::Error::new(
-            io::ErrorKind::Other,
-            format!("Godot editor exited with: {}", code),
-        );
-        println!("{err}");
-        return Err(Box::new(err));
+        Ok(status) => {
+            if status.success() {
+                println!("Godot editor launched successfully.");
+                Ok(())
+            } else {
+                Err(GetError::Exit(status))
+            }
+        }
     }
-
-    Ok(())
 }
 
-
+#[cfg(target_os = "linux")]
 fn relaunch_in_terminal_linux() -> Result<(), ()> {
     let exe = env::current_exe().expect("Failed to get current executable");
 
@@ -66,10 +85,7 @@ fn relaunch_in_terminal_linux() -> Result<(), ()> {
     ];
 
     for (term, args) in terminals {
-        let result = Command::new(term)
-            .args(args)
-            .arg(&exe)
-            .spawn();
+        let result = Command::new(term).args(args).arg(&exe).spawn();
 
         if result.is_ok() {
             return Ok(());
@@ -77,42 +93,39 @@ fn relaunch_in_terminal_linux() -> Result<(), ()> {
     }
 
     eprintln!("Failed to find a terminal emulator.");
-    return Err(())
-}
-
-fn fail() {
-    println!("Press Enter to continue...");
-    let mut input = String::new();
-    std::io::stdin().read_line(&mut input).unwrap();
+    return Err(());
 }
 
 #[tokio::main]
 async fn main() -> ExitCode {
-    // Temporary fix before moving to using main releases rather than custom packaging.
-    // Or we'd need to package .net versions as well...
-    if update::is_dotnet() {
-        println!("Found Dotnet project files. Dotnet builds are not yet supported.");
-        fail();
-        return ExitCode::FAILURE;
-    }
-
-    // Hacky fix to ensure we always launch a terminal for Godot. 
-    // Queries a bunch of common terminal emulators...
-    // If someone doesn't have any of these available... hopefully they know how to run it from the terminal.
-    if cfg!(target_os = "linux") && !std::io::stdout().is_terminal() {
-        // do we actually want to give up here, or try launching in the background?
-        // giving up for now
-        match relaunch_in_terminal_linux() {
-            Ok(_) => return ExitCode::SUCCESS,
-            Err(_) => return ExitCode::FAILURE,
+    let config = match config::setup_config().await {
+        Ok(config) => config,
+        Err(e) => {
+            println!("{}", e);
+            fail();
+            return ExitCode::FAILURE;
         }
-    }
+    };
 
     #[cfg(target_os = "linux")]
     {
+        // Hacky fix to ensure we always launch a terminal for Godot.
+        // Queries a bunch of common terminal emulators...
+        // If someone doesn't have any of these available... hopefully they know how to run it from the terminal.
+        if !std::io::stdout().is_terminal() {
+            // do we actually want to give up here, or try launching in the background?
+            // giving up for now
+            match relaunch_in_terminal_linux() {
+                Ok(_) => return ExitCode::SUCCESS,
+                Err(_) => return ExitCode::FAILURE,
+            }
+        }
+
         let cwd = env::current_dir().expect("Failed to get current directory");
         let exe = env::current_exe().expect("Failed to get current executable");
-        let project_root = exe.parent().expect("Failed to get parent directory of current executable");
+        let project_root = exe
+            .parent()
+            .expect("Failed to get parent directory of current executable");
         if cwd != project_root {
             env::set_current_dir(project_root).expect("Failed to set current directory");
             println!("Changed CWD from {:?} to {:?}", cwd, project_root);
@@ -131,19 +144,26 @@ async fn main() -> ExitCode {
             cwd = exe_dir.to_path_buf();
         }
         // App translocation; we can't find the current directory, so we'll create a directory in the home directory
-        if cwd.starts_with("/private"){
-            cwd = untranslocator::resolve_translocated_path(&cwd).expect("Failed to resolve translocated path");
-        } 
+        if cwd.starts_with("/private") {
+            cwd = untranslocator::resolve_translocated_path(&cwd)
+                .expect("Failed to resolve translocated path");
+        }
         if cwd.ends_with("Contents/MacOS") {
-            let project_root = cwd.parent().expect("Failed to get parent directory").parent().expect("Failed to get parent2 directory").parent().expect("Failed to get parent3 directory");
+            let project_root = cwd
+                .parent()
+                .expect("Failed to get parent directory")
+                .parent()
+                .expect("Failed to get parent2 directory")
+                .parent()
+                .expect("Failed to get parent3 directory");
             env::set_current_dir(project_root).expect("Failed to set current directory");
             println!("Changed CWD from {:?} to {:?}", cwd, project_root);
-        } else{
+        } else {
             println!("Already in the project root");
         }
     }
 
-    let res = download_and_launch().await;
+    let res = download_and_launch(&config).await;
     // pause in case of error, so we can read it
     if let Err(_) = res {
         fail();
