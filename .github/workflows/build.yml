@@ -1,4 +1,4 @@
-name: Build Backstitch Launcher (All Platforms)
+name: 🌌 All Workflows
 
 on:
   push:
@@ -16,7 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       - name: Upload gitignore
         shell: bash
         run: |
@@ -28,6 +28,10 @@ jobs:
           include-hidden-files: true
           path: artifacts/*
           name: ".gitignore.template"
+
+  rust_validation:
+    name: 🔍 Rust Validation
+    uses: ./.github/workflows/rust_validation.yml
 
   macos-build:
     name: 🍎 Build for macOS
