@@ -134,7 +134,7 @@ pub fn prompt_yes_no(prompt: &str) -> bool {
 }
 
 #[cfg(not(target_os = "windows"))]
-pub async fn make_folder_contents_executable(path: &Path) -> Result<(), GetError> {
+pub async fn make_folder_contents_executable(path: &Path) -> Result<(), LauncherError> {
     let mut entries = fs::read_dir(path).await?;
     while let Some(entry) = entries.next_entry().await? {
         let path = entry.path();
