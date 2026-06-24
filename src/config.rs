@@ -19,21 +19,25 @@ pub enum UseDotnet {
 #[command(rename_all = "kebab-case")]
 pub struct CommandConfig {
     #[clap(help = "Whether we should download the .NET version of Godot. Defaults to auto.")]
+    #[arg(long)]
     pub dotnet: Option<UseDotnet>,
 
     #[clap(help = "Use a custom download URL for Godot. \
         Downloads must contain the same .zip structure as the Godot website downloads for .NET or regular. \
         Cross-platform custom URLs are not currently supported!")]
+    #[arg(long)]
     pub godot_url: Option<Url>,
 
-    #[arg(conflicts_with = "godot_url")]
-    #[arg(conflicts_with = "use_dotnet")]
     #[clap(help = "Use a custom executable path for Godot, instead of downloading.")]
+    #[arg(conflicts_with = "godot_url")]
+    #[arg(conflicts_with = "dotnet")]
+    #[arg(long)]
     pub godot_path: Option<PathBuf>,
 
     #[clap(
         help = "Whether to download the latest prerelease version of Backstitch, instead of the stable version. Warning: Here be dragons!"
     )]
+    #[arg(long)]
     pub allow_prerelease: Option<bool>,
 }
 
