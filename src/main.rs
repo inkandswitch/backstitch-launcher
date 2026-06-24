@@ -71,7 +71,7 @@ async fn download_and_launch(config: &CommandConfig) -> Result<(), LauncherError
 }
 
 #[cfg(target_os = "linux")]
-fn relaunch_in_terminal(cwd: &PathBuf, exe: &PathBuf) -> Result<(), ()> {
+fn relaunch_in_terminal(cwd: &PathBuf, exe: &PathBuf, args: &[String]) -> Result<(), ()> {
     // Hacky fix to ensure we always launch a terminal for Godot.
     // Queries a bunch of common terminal emulators...
     // If someone doesn't have any of these available... hopefully they know how to run it from the terminal.
@@ -87,10 +87,11 @@ fn relaunch_in_terminal(cwd: &PathBuf, exe: &PathBuf) -> Result<(), ()> {
         ("alacritty", &["-e"]),
     ];
 
-    for (term, args) in terminals {
+    for (term, terminal_args) in terminals {
         let result = Command::new(term)
-            .args(args)
+            .args(terminal_args)
             .arg(exe)
+            .args(args)
             .current_dir(cwd)
             .spawn();
 
@@ -104,14 +105,45 @@ fn relaunch_in_terminal(cwd: &PathBuf, exe: &PathBuf) -> Result<(), ()> {
 }
 
 #[cfg(target_os = "macos")]
-fn relaunch_in_terminal(cwd: &PathBuf, exe: &PathBuf) -> Result<(), ()> {
-    std::env::set_current_dir(cwd).expect("Failed to set current directory");
-    let result = Command::new("open")
+fn relaunch_in_terminal(cwd: &PathBuf, exe: &PathBuf, args: &[String]) -> Result<(), ()> {
+    // macos terminal, for some god-forsaken reason, does not support passing arguments to the executable when launching it from a GUI app.
+    // write the exe and the args to a shell script in a temp file and launch it with open
+    use std::{fs::File, io::Write, process::Stdio};
+    let temp_path = std::env::temp_dir().join(format!(
+        "backstitch-launcher-terminal.{}.sh",
+        std::process::id()
+    ));
+    {
+        use std::os::unix::fs::PermissionsExt;
+
+        let mut temp_file = File::create(&temp_path).expect("Failed to create temp file");
+        temp_file
+            .set_permissions(std::fs::Permissions::from_mode(0o755))
+            .expect("Failed to set `permissions`");
+        temp_file
+            .write(
+                format!(
+                    "#!/bin/sh\nset -eo pipefail\ncd '{}'\n'{}' {}\nrm -f {}",
+                    cwd.to_string_lossy().to_string(),
+                    exe.to_string_lossy().to_string(),
+                    args.join(" "),
+                    temp_path.to_string_lossy().to_string()
+                )
+                .as_bytes(),
+            )
+            .expect("Failed to write to temp file");
+        temp_file.flush().expect("Failed to flush temp file");
+    }
+    let mut command = Command::new("open");
+    command
         .arg("-a")
         .arg("Terminal")
-        .arg(exe)
-        .current_dir(cwd)
-        .spawn();
+        .arg(&temp_path)
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .stdin(Stdio::null());
+
+    let result = command.spawn();
     if result.is_ok() {
         return Ok(());
     }
@@ -121,10 +153,10 @@ fn relaunch_in_terminal(cwd: &PathBuf, exe: &PathBuf) -> Result<(), ()> {
 }
 
 #[cfg(target_os = "windows")]
-fn relaunch_in_terminal(cwd: &PathBuf, exe: &PathBuf) -> Result<(), ()> {
+fn relaunch_in_terminal(cwd: &PathBuf, exe: &PathBuf, args: &[String]) -> Result<(), ()> {
     // change cwd to the cwd param
     std::env::set_current_dir(cwd).expect("Failed to set current directory");
-    let result = Command::new(exe).spawn();
+    let result = Command::new(exe).args(args).current_dir(cwd).spawn();
     if result.is_ok() {
         return Ok(());
     }
@@ -148,6 +180,8 @@ async fn main() -> ExitCode {
         let exe = std::env::current_exe().expect("Failed to get current executable");
         (cwd, exe)
     };
+    // collect all but the first argument (the executable path)
+    let _args = std::env::args().skip(1).collect::<Vec<String>>();
 
     #[cfg(target_os = "linux")]
     {
@@ -188,10 +222,10 @@ async fn main() -> ExitCode {
     #[cfg(any(target_os = "linux", target_os = "macos"))]
     {
         use std::io::IsTerminal;
-        if !std::io::stdout().is_terminal() {
+        if !std::io::stdin().is_terminal() {
             // do we actually want to give up here, or try launching in the background?
             // giving up for now
-            match relaunch_in_terminal(&cwd, &exe) {
+            match relaunch_in_terminal(&cwd, &exe, &_args) {
                 Ok(_) => return ExitCode::SUCCESS,
                 Err(_) => return ExitCode::FAILURE,
             }
