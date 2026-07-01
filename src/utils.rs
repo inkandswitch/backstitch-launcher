@@ -61,11 +61,10 @@ pub fn fail() {
     std::io::stdin().read_line(&mut input).unwrap();
 }
 
-async fn ensure_empty_directory(path: &Path) -> Result<(), LauncherError> {
-    if path.exists() {
-        fs::remove_dir_all(path).await?;
+async fn ensure_directory(path: &Path) -> Result<(), LauncherError> {
+    if !path.exists() {
+        fs::create_dir_all(path).await?;
     }
-    fs::create_dir_all(path).await?;
     Ok(())
 }
 
@@ -116,7 +115,7 @@ pub async fn download_and_extract_file(
     skip_root_dir: bool,
 ) -> Result<(), LauncherError> {
     let temp_dir = std::env::temp_dir().join("backstitch_update");
-    ensure_empty_directory(&temp_dir).await?;
+    ensure_directory(&temp_dir).await?;
 
     let response = client
         .get(url.to_string())
@@ -151,7 +150,7 @@ pub async fn download_and_extract_file(
     temp_file.write_all(&bytes).await?;
 
     println!("Extracting to {output_dir:?}...");
-    ensure_empty_directory(output_dir).await?;
+    ensure_directory(output_dir).await?;
     unzip_file(&temp_filepath, output_dir, skip_root_dir)?;
 
     Ok(())

@@ -17,7 +17,7 @@ const GITHUB_API: &str = "https://api.github.com/repos/inkandswitch/backstitch/r
 
 const VERSION_FILE: &str = ".backstitch_version";
 const PLUGIN_ARTIFACT_PREFIX: &str = "backstitch";
-const PLUGIN_OUTPUT_DIR: &str = "./addons/backstitch";
+const PLUGIN_OUTPUT_DIR: &str = ".";
 
 #[derive(Debug, Deserialize)]
 struct Release {
