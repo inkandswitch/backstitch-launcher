@@ -96,7 +96,7 @@ async fn ensure_release(client: &Client, release: &Release) -> Result<(), Launch
         acquire_from_release(
             client,
             release,
-            &Path::new(PLUGIN_OUTPUT_DIR),
+            Path::new(PLUGIN_OUTPUT_DIR),
             &PLUGIN_ARTIFACT_PREFIX.to_string(),
         )
         .await?;
@@ -112,7 +112,7 @@ async fn overwrite_release(client: &Client, release: &Release) -> Result<(), Lau
     acquire_from_release(
         client,
         release,
-        &Path::new(PLUGIN_OUTPUT_DIR),
+        plugin_dir,
         &PLUGIN_ARTIFACT_PREFIX.to_string(),
     )
     .await?;

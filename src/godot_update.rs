@@ -60,7 +60,7 @@ pub async fn try_update(
         .await?;
 
     #[cfg(not(target_os = "windows"))]
-    utils::make_folder_contents_executable(&godot_dir).await?;
+    utils::make_folder_contents_executable(godot_dir).await?;
 
     // We do no validation to ensure that Godot is actually downloaded to the expected path.
     Ok(exe_path)
