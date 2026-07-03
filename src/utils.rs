@@ -68,6 +68,14 @@ async fn ensure_directory(path: &Path) -> Result<(), LauncherError> {
     Ok(())
 }
 
+async fn ensure_empty_directory(path: &Path) -> Result<(), LauncherError> {
+    if path.exists() {
+        fs::remove_dir_all(path).await?;
+    }
+    fs::create_dir_all(path).await?;
+    Ok(())
+}
+
 fn unzip_file(zip_path: &Path, dest: &Path, skip_root_dir: bool) -> Result<(), LauncherError> {
     let file = std::fs::File::open(zip_path)?;
     let mut archive = zip::ZipArchive::new(file)?;
@@ -115,7 +123,7 @@ pub async fn download_and_extract_file(
     skip_root_dir: bool,
 ) -> Result<(), LauncherError> {
     let temp_dir = std::env::temp_dir().join("backstitch_update");
-    ensure_directory(&temp_dir).await?;
+    ensure_empty_directory(&temp_dir).await?;
 
     let response = client
         .get(url.to_string())

@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use reqwest::Client;
 use tokio::fs;
@@ -52,16 +52,15 @@ pub async fn try_update(
     }
 
     println!("Re-acquiring Godot...");
-    utils::download_and_extract_file(
-        client,
-        &godot_info.url,
-        &PathBuf::from(GODOT_OUTPUT_DIR),
-        godot_info.nested,
-    )
-    .await?;
+    let godot_dir = Path::new(GODOT_OUTPUT_DIR).canonicalize().unwrap();
+    if godot_dir.exists() {
+        let _ = fs::remove_dir_all(&godot_dir).await;
+    }
+    utils::download_and_extract_file(client, &godot_info.url, &godot_dir, godot_info.nested)
+        .await?;
 
     #[cfg(not(target_os = "windows"))]
-    utils::make_folder_contents_executable(&PathBuf::from(GODOT_OUTPUT_DIR)).await?;
+    utils::make_folder_contents_executable(&godot_dir).await?;
 
     // We do no validation to ensure that Godot is actually downloaded to the expected path.
     Ok(exe_path)
