@@ -56,8 +56,7 @@ pub async fn try_update(
     if godot_dir.exists() {
         let _ = fs::remove_dir_all(&godot_dir).await;
     }
-    utils::download_and_extract_file(client, &godot_info.url, &godot_dir, godot_info.nested)
-        .await?;
+    utils::download_and_extract_file(client, &godot_info.url, godot_dir, godot_info.nested).await?;
 
     #[cfg(not(target_os = "windows"))]
     utils::make_folder_contents_executable(godot_dir).await?;
