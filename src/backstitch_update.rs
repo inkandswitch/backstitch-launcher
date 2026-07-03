@@ -17,8 +17,7 @@ const GITHUB_API: &str = "https://api.github.com/repos/inkandswitch/backstitch/r
 
 const VERSION_FILE: &str = ".backstitch_version";
 const PLUGIN_ARTIFACT_PREFIX: &str = "backstitch";
-const PLUGIN_OUTPUT_DIR: &str = ".";
-const PLUGIN_DIR: &str = "./addons/backstitch";
+const PLUGIN_OUTPUT_DIR: &str = "./addons/backstitch";
 
 #[derive(Debug, Deserialize)]
 struct Release {
@@ -72,18 +71,32 @@ async fn acquire_from_release(
             "Asset containing {prefix} not found"
         )))?;
 
-    utils::download_and_extract_file(client, &asset.browser_download_url, output_dir, false).await
+    utils::download_and_extract_file(client, &asset.browser_download_url, output_dir, false)
+        .await?;
+    // check if `addons/backstitch` exists in the output directory
+    let backstitch_dir = output_dir.join("addons/backstitch");
+    if backstitch_dir.exists() {
+        // move `addons/backstitch` to `<output_dir>/..`
+        let temp_dir = output_dir
+            .parent()
+            .unwrap_or(Path::new(".."))
+            .join("backstitch_temp");
+        fs::rename(&backstitch_dir, &temp_dir).await?;
+        fs::remove_dir_all(&output_dir).await?;
+        fs::rename(&temp_dir, output_dir).await?;
+    }
+    Ok(())
 }
 
 async fn ensure_release(client: &Client, release: &Release) -> Result<(), LauncherError> {
     // we could check the plugin version file instead of just the directory's existence... but this is fine
-    let backstitch_exists = tokio::fs::try_exists(Path::new(PLUGIN_DIR)).await?;
+    let backstitch_exists = tokio::fs::try_exists(Path::new(PLUGIN_OUTPUT_DIR)).await?;
     if !backstitch_exists {
         println!("Re-acquiring Backstitch...");
         acquire_from_release(
             client,
             release,
-            &Path::new(PLUGIN_OUTPUT_DIR).canonicalize().unwrap(),
+            &Path::new(PLUGIN_OUTPUT_DIR),
             &PLUGIN_ARTIFACT_PREFIX.to_string(),
         )
         .await?;
@@ -92,14 +105,14 @@ async fn ensure_release(client: &Client, release: &Release) -> Result<(), Launch
 }
 
 async fn overwrite_release(client: &Client, release: &Release) -> Result<(), LauncherError> {
-    let plugin_dir = Path::new(PLUGIN_DIR).canonicalize().unwrap();
+    let plugin_dir = Path::new(PLUGIN_OUTPUT_DIR);
     if plugin_dir.exists() {
         let _ = fs::remove_dir_all(plugin_dir).await;
     }
     acquire_from_release(
         client,
         release,
-        &Path::new(PLUGIN_OUTPUT_DIR).canonicalize().unwrap(),
+        &Path::new(PLUGIN_OUTPUT_DIR),
         &PLUGIN_ARTIFACT_PREFIX.to_string(),
     )
     .await?;

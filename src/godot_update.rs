@@ -52,7 +52,7 @@ pub async fn try_update(
     }
 
     println!("Re-acquiring Godot...");
-    let godot_dir = Path::new(GODOT_OUTPUT_DIR).canonicalize().unwrap();
+    let godot_dir = Path::new(GODOT_OUTPUT_DIR);
     if godot_dir.exists() {
         let _ = fs::remove_dir_all(&godot_dir).await;
     }
