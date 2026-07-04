@@ -61,13 +61,13 @@ async fn acquire_from_release(
     client: &Client,
     release: &Release,
     output_dir: &Path,
-    prefix: &String,
+    prefix: &str,
 ) -> Result<(), LauncherError> {
     let asset = release
         .assets
         .iter()
-        .find(|a| a.name.contains(prefix.as_str()))
-        .ok_or_else(|| LauncherError::ReleaseAssetNotFound(prefix.clone()))?;
+        .find(|a| a.name.contains(prefix))
+        .ok_or_else(|| LauncherError::ReleaseAssetNotFound(prefix.to_string()))?;
 
     utils::download_and_extract_file(client, &asset.browser_download_url, output_dir, false)
         .await?;
@@ -95,7 +95,7 @@ async fn ensure_release(client: &Client, release: &Release) -> Result<(), Launch
             client,
             release,
             Path::new(PLUGIN_OUTPUT_DIR),
-            &PLUGIN_ARTIFACT_PREFIX.to_string(),
+            PLUGIN_ARTIFACT_PREFIX,
         )
         .await?;
     }
@@ -107,13 +107,7 @@ async fn overwrite_release(client: &Client, release: &Release) -> Result<(), Lau
     if plugin_dir.exists() {
         let _ = fs::remove_dir_all(plugin_dir).await;
     }
-    acquire_from_release(
-        client,
-        release,
-        plugin_dir,
-        &PLUGIN_ARTIFACT_PREFIX.to_string(),
-    )
-    .await?;
+    acquire_from_release(client, release, plugin_dir, PLUGIN_ARTIFACT_PREFIX).await?;
     Ok(())
 }
 
@@ -173,10 +167,12 @@ fn extract_release_metadata(release: &Release) -> Result<ReleaseMetadata, Launch
 }
 
 fn check_release(metadata: &ReleaseMetadata) -> Result<(), LauncherError> {
-    let version = Version::parse(env!("CARGO_PKG_VERSION")).expect(&format!(
-        "CARGO_PKG_VERSION is bad! Value: {}",
-        env!("CARGO_PKG_VERSION")
-    ));
+    let version = Version::parse(env!("CARGO_PKG_VERSION")).unwrap_or_else(|_| {
+        panic!(
+            "CARGO_PKG_VERSION is bad! Value: {}",
+            env!("CARGO_PKG_VERSION")
+        )
+    });
     let min_version = Version::parse(metadata.minimum_launcher.trim_start_matches("v"))
         .map_err(|e| LauncherError::BadMetadata(e.to_string()))?;
     if version < min_version {
