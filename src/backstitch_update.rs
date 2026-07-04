@@ -49,7 +49,7 @@ pub async fn get_current_version() -> Result<VersionFile, LauncherError> {
                     println!("Backstitch is not currently installed.");
                     LauncherError::NotInstalled
                 }
-                _ => LauncherError::Unknown(e.to_string()),
+                _ => LauncherError::Io(e),
             });
         }
     };
@@ -67,9 +67,7 @@ async fn acquire_from_release(
         .assets
         .iter()
         .find(|a| a.name.contains(prefix.as_str()))
-        .ok_or(LauncherError::Unknown(format!(
-            "Asset containing {prefix} not found"
-        )))?;
+        .ok_or_else(|| LauncherError::ReleaseAssetNotFound(prefix.clone()))?;
 
     utils::download_and_extract_file(client, &asset.browser_download_url, output_dir, false)
         .await?;
@@ -148,7 +146,7 @@ async fn get_latest_release_or_prerelease(client: &Client) -> Result<Release, La
     let release = releases
         .into_iter()
         .max_by_key(|release| release.published_at);
-    release.ok_or_else(|| LauncherError::Unknown("No releases found".to_string()))
+    release.ok_or_else(|| LauncherError::ReleaseAssetNotFound("No releases found".to_string()))
 }
 
 fn extract_release_metadata(release: &Release) -> Result<ReleaseMetadata, LauncherError> {
@@ -175,8 +173,10 @@ fn extract_release_metadata(release: &Release) -> Result<ReleaseMetadata, Launch
 }
 
 fn check_release(metadata: &ReleaseMetadata) -> Result<(), LauncherError> {
-    let version = Version::parse(env!("CARGO_PKG_VERSION"))
-        .map_err(|e| LauncherError::Unknown(e.to_string()))?;
+    let version = Version::parse(env!("CARGO_PKG_VERSION")).expect(&format!(
+        "CARGO_PKG_VERSION is bad! Value: {}",
+        env!("CARGO_PKG_VERSION")
+    ));
     let min_version = Version::parse(metadata.minimum_launcher.trim_start_matches("v"))
         .map_err(|e| LauncherError::BadMetadata(e.to_string()))?;
     if version < min_version {
@@ -253,7 +253,7 @@ pub async fn try_update(
             return Err(LauncherError::TooOld(version));
         }
         Err(e) => {
-            return Err(LauncherError::Unknown(e.to_string()));
+            return Err(e);
         }
     };
     check_release(&latest_metadata)?;
@@ -302,7 +302,7 @@ pub async fn try_update(
     version_file
         .write_all(
             serde_json::to_string(&new_version)
-                .map_err(|e| LauncherError::Unknown(e.to_string()))?
+                .expect("Serde deserialization error; this should never happen")
                 .as_bytes(),
         )
         .await?;

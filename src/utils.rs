@@ -16,43 +16,33 @@ use url::Url;
 
 #[derive(thiserror::Error, Debug)]
 pub enum LauncherError {
-    #[error("unknown {0}")]
-    Unknown(String),
     #[error(
         "the Backstitch Launcher is out of date, and cannot acquire the latest release. \
         Update at https://backstitch.dev/docs/installation/launcher"
     )]
     OutOfDate,
-    #[error("Unsupported version of Backstitch: {0}")]
+    #[error("unsupported version of Backstitch: {0}")]
     TooOld(String),
     #[error("the release had no attached metadata, or the metadata was invalid: {0}")]
     BadMetadata(String),
+    #[error("the release didn't include an expected asset {0}")]
+    ReleaseAssetNotFound(String),
     #[error("the version file was not found (this is OK)")]
     NotInstalled,
+    #[error("malformed version file {0}")]
+    MalformedVersion(String),
     #[error("the version file was malformed")]
     BadVersionFile(String),
     #[error("there was a problem launching Godot: {0}")]
     Launch(String),
     #[error("Godot exited with error code: {0}")]
     Exit(ExitStatus),
-}
-
-impl From<reqwest::Error> for LauncherError {
-    fn from(value: reqwest::Error) -> Self {
-        LauncherError::Unknown(value.to_string())
-    }
-}
-
-impl From<std::io::Error> for LauncherError {
-    fn from(value: std::io::Error) -> Self {
-        LauncherError::Unknown(value.to_string())
-    }
-}
-
-impl From<zip::result::ZipError> for LauncherError {
-    fn from(value: zip::result::ZipError) -> Self {
-        LauncherError::Unknown(value.to_string())
-    }
+    #[error("network {0}")]
+    Network(#[from] reqwest::Error),
+    #[error("unzip {0}")]
+    Zip(#[from] zip::result::ZipError),
+    #[error("io {0}")]
+    Io(#[from] std::io::Error),
 }
 
 pub fn fail() {
