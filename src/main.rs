@@ -16,8 +16,7 @@ async fn download_and_launch(config: &CommandConfig) -> Result<(), LauncherError
 
     let client = Client::builder()
         .user_agent("backstitch-launcher")
-        .build()
-        .map_err(|e| LauncherError::Unknown(e.to_string()))?;
+        .build()?;
 
     let new_version =
         match backstitch_update::try_update(&client, config, current_version.as_ref().ok()).await {

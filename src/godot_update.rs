@@ -29,9 +29,7 @@ pub async fn try_update(
         UseDotnet::Auto => is_dotnet().await?,
     };
 
-    let mut godot_info =
-        get_godot_info(new_version, dotnet).map_err(|e| LauncherError::Unknown(e.to_string()))?;
-
+    let mut godot_info = get_godot_info(new_version, dotnet)?;
     if let Some(url) = config.godot_url.clone() {
         println!("Using Godot URL override: {url}");
         godot_info.url = url;

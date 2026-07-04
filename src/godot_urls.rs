@@ -1,15 +1,8 @@
 use std::path::PathBuf;
 
 use reqwest::Url;
-use thiserror::Error;
 
-#[derive(Error, Debug)]
-pub enum InfoError {
-    #[error("malformed version {0}")]
-    MalformedVersion(String),
-    #[error("{0}")]
-    Unknown(String),
-}
+use crate::utils::LauncherError;
 
 pub struct GodotDownloadInfo {
     pub url: Url,
@@ -17,19 +10,19 @@ pub struct GodotDownloadInfo {
     pub nested: bool,
 }
 
-pub fn get_godot_info(version: &str, dotnet: bool) -> Result<GodotDownloadInfo, InfoError> {
+pub fn get_godot_info(version: &str, dotnet: bool) -> Result<GodotDownloadInfo, LauncherError> {
     let [short_version, flavor]: [&str; 2] =
         version
             .split("-")
             .collect::<Vec<&str>>()
             .try_into()
-            .map_err(|_| InfoError::MalformedVersion(version.to_string()))?;
+            .map_err(|_| LauncherError::MalformedVersion(version.to_string()))?;
 
     let slug = godot_slug(dotnet);
     let platform = godot_platform();
     let url = Url::parse(&format!(
         "https://downloads.godotengine.org/?version={short_version}&flavor={flavor}&slug={slug}.zip&platform={platform}"
-    )).map_err(|e| InfoError::Unknown(e.to_string()))?;
+    )).expect("The Godot download URL was malformed");
     let path = godot_path(dotnet, version);
 
     Ok(GodotDownloadInfo {
