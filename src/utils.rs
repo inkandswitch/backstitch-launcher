@@ -111,7 +111,7 @@ fn unzip_file(zip_path: &Path, dest: &Path, skip_root_dir: bool) -> Result<(), L
     Ok(())
 }
 
-async fn get(client: &Client, url: &Url, seek: usize) -> Result<reqwest::Response, LauncherError> {
+async fn get(client: &Client, url: &Url, seek: u64) -> Result<reqwest::Response, LauncherError> {
     let mut request = client.get(url.to_string());
     if seek != 0 {
         request = request.header(header::RANGE, format!("bytes={}-", seek));
@@ -144,11 +144,14 @@ pub async fn download_and_extract_file(
         .progress_chars("#>-"),
     );
 
-    let mut bytes = Vec::with_capacity(total_size as usize);
+    let temp_filepath = temp_dir.join("download.zip");
+    let mut bytes_written = 0u64;
+    let mut temp_file = fs::File::create(&temp_filepath).await?;
     let mut hasher = expected_digest.map(|_| Sha256::new());
     let mut tries = 0;
 
     tracing::info!("Expecting to download {total_size} bytes");
+    tracing::info!("Writing zip to filepath {temp_filepath:?}");
 
     loop {
         let mut stream = response.bytes_stream();
@@ -164,7 +167,8 @@ pub async fn download_and_extract_file(
                     return Err(e.into());
                 }
             };
-            bytes.extend_from_slice(&chunk);
+            temp_file.write_all(&chunk).await?;
+            bytes_written += chunk.len() as u64;
             if let Some(hasher) = hasher.as_mut() {
                 hasher.update(&chunk);
             }
@@ -172,7 +176,7 @@ pub async fn download_and_extract_file(
         }
 
         // If we're complete, we're done.
-        if bytes.len() as u64 >= total_size {
+        if bytes_written >= total_size {
             break;
         }
 
@@ -181,20 +185,15 @@ pub async fn download_and_extract_file(
         if tries > 10 {
             return Err(LauncherError::TooManyRetries(url.clone()));
         }
-        response = get(client, url, bytes.len()).await?;
+        response = get(client, url, bytes_written).await?;
     }
 
     let digest = hasher.map(|h| h.finalize());
     pb.finish_with_message("Download complete");
 
-    tracing::info!("Downloaded {} bytes", bytes.len());
+    tracing::info!("Downloaded {bytes_written} bytes");
 
-    let temp_filepath = temp_dir.join("download.zip");
-    tracing::info!("Writing zip to filepath {temp_filepath:?}");
-    let mut temp_file = fs::File::create(&temp_filepath).await?;
-    temp_file.write_all(&bytes).await?;
-
-    if bytes.len() as u64 != total_size {
+    if bytes_written != total_size {
         return Err(LauncherError::DigestMismatch(url.clone()));
     }
 
