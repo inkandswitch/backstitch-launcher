@@ -1,6 +1,6 @@
 use futures::StreamExt;
 use indicatif::{ProgressBar, ProgressStyle};
-use reqwest::Client;
+use reqwest::{Client, header};
 use sha2::{Digest, Sha256};
 #[cfg(not(target_os = "windows"))]
 use std::os::unix::fs::PermissionsExt;
@@ -36,6 +36,8 @@ pub enum LauncherError {
     BadVersionFile(String),
     #[error("the file downloaded from {0} did not match the expected hash")]
     DigestMismatch(Url),
+    #[error("the file at {0} couldn't be downloaded, because it failed too many times")]
+    TooManyRetries(Url),
     #[error("there was a problem launching Godot: {0}")]
     Launch(String),
     #[error("Godot exited with error code: {0}")]
@@ -109,6 +111,16 @@ fn unzip_file(zip_path: &Path, dest: &Path, skip_root_dir: bool) -> Result<(), L
     Ok(())
 }
 
+async fn get(client: &Client, url: &Url, seek: usize) -> Result<reqwest::Response, LauncherError> {
+    let mut request = client.get(url.to_string());
+    if seek != 0 {
+        request = request.header(header::RANGE, format!("bytes={}-", seek));
+    }
+
+    tracing::info!("GET {url}");
+    Ok(request.send().await?.error_for_status()?)
+}
+
 pub async fn download_and_extract_file(
     client: &Client,
     url: &Url,
@@ -119,12 +131,7 @@ pub async fn download_and_extract_file(
     let temp_dir = std::env::temp_dir().join("backstitch_update");
     ensure_empty_directory(&temp_dir).await?;
 
-    tracing::info!("GET {url}");
-    let response = client
-        .get(url.to_string())
-        .send()
-        .await?
-        .error_for_status()?;
+    let mut response = get(client, url, 0).await?;
 
     let total_size = response.content_length().unwrap_or(0);
     let pb = ProgressBar::new(total_size);
@@ -138,28 +145,58 @@ pub async fn download_and_extract_file(
     );
 
     let mut bytes = Vec::with_capacity(total_size as usize);
-    let mut stream = response.bytes_stream();
+    let mut hasher = expected_digest.map(|_| Sha256::new());
+    let mut tries = 0;
 
     tracing::info!("Expecting to download {total_size} bytes");
 
-    let mut hasher = expected_digest.map(|_| Sha256::new());
-    while let Some(chunk) = stream.next().await {
-        let chunk = chunk?;
-        bytes.extend_from_slice(&chunk);
-        if let Some(hasher) = hasher.as_mut() {
-            hasher.update(&chunk);
+    loop {
+        let mut stream = response.bytes_stream();
+        while let Some(chunk) = stream.next().await {
+            let chunk = match chunk {
+                Ok(chunk) => chunk,
+                Err(e) => {
+                    // If it's a decoding error, keep trying...
+                    if e.is_decode() {
+                        tracing::warn!("Interrupt {e:?}");
+                        break;
+                    }
+                    return Err(e.into());
+                }
+            };
+            bytes.extend_from_slice(&chunk);
+            if let Some(hasher) = hasher.as_mut() {
+                hasher.update(&chunk);
+            }
+            pb.inc(chunk.len() as u64);
         }
-        pb.inc(chunk.len() as u64);
+
+        // If we're complete, we're done.
+        if bytes.len() as u64 >= total_size {
+            break;
+        }
+
+        tries += 1;
+
+        if tries > 10 {
+            return Err(LauncherError::TooManyRetries(url.clone()));
+        }
+        response = get(client, url, bytes.len()).await?;
     }
+
     let digest = hasher.map(|h| h.finalize());
     pb.finish_with_message("Download complete");
 
     tracing::info!("Downloaded {} bytes", bytes.len());
 
-    if let (Some(digest), Some(expected)) = (digest, expected_digest) {
-        if digest.as_slice() != expected {
-            return Err(LauncherError::DigestMismatch(url.clone()));
-        }
+    if bytes.len() as u64 != total_size {
+        return Err(LauncherError::DigestMismatch(url.clone()));
+    }
+
+    if let (Some(digest), Some(expected)) = (digest, expected_digest)
+        && digest.as_slice() != expected
+    {
+        return Err(LauncherError::DigestMismatch(url.clone()));
     }
 
     let temp_filepath = temp_dir.join("download.zip");
