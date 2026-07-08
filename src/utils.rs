@@ -189,6 +189,11 @@ pub async fn download_and_extract_file(
 
     tracing::info!("Downloaded {} bytes", bytes.len());
 
+    let temp_filepath = temp_dir.join("download.zip");
+    tracing::info!("Writing zip to filepath {temp_filepath:?}");
+    let mut temp_file = fs::File::create(&temp_filepath).await?;
+    temp_file.write_all(&bytes).await?;
+
     if bytes.len() as u64 != total_size {
         return Err(LauncherError::DigestMismatch(url.clone()));
     }
@@ -198,11 +203,6 @@ pub async fn download_and_extract_file(
     {
         return Err(LauncherError::DigestMismatch(url.clone()));
     }
-
-    let temp_filepath = temp_dir.join("download.zip");
-    tracing::info!("Writing zip to filepath {temp_filepath:?}");
-    let mut temp_file = fs::File::create(&temp_filepath).await?;
-    temp_file.write_all(&bytes).await?;
 
     println!("Extracting to {output_dir:?}...");
     ensure_directory(output_dir).await?;
