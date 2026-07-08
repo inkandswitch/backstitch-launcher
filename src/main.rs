@@ -239,7 +239,8 @@ async fn main() -> ExitCode {
     let res = download_and_launch(&config).await;
     // pause in case of error, so we can read it
     if let Err(e) = res {
-        println!("Launcher error: {}", e);
+        println!("Launcher error: {e}");
+        ::tracing::info!("Verbose error: {e:?}");
         fail();
         return ExitCode::FAILURE;
     }
