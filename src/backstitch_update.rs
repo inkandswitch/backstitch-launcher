@@ -2,7 +2,8 @@ use chrono::{DateTime, Utc};
 use regex::Regex;
 use reqwest::Client;
 use semver::Version;
-use serde::{Deserialize, Serialize};
+use serde::de::Error;
+use serde::{Deserialize, Deserializer, Serialize};
 use std::io::IsTerminal;
 use std::path::Path;
 use std::{env, io};
@@ -27,10 +28,33 @@ struct Release {
     body: String,
 }
 
+fn deserialize_digest<'de, D>(deserializer: D) -> Result<Box<[u8; 32]>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let s = String::deserialize(deserializer)?;
+    let (algorithm, hex) = s
+        .split_once(':')
+        .ok_or_else(|| Error::custom("expected digest in the form '<algorithm>:<hex>'"))?;
+
+    if algorithm != "sha256" {
+        return Err(Error::custom(format!(
+            "expected digest algorithm sha256; was {algorithm}"
+        )));
+    }
+
+    let v = hex::decode(hex).map_err(Error::custom)?;
+    v.into_boxed_slice()
+        .try_into()
+        .map_err(|_| Error::custom(format!("Digest expected to be 32 bytes. Digest: {s}")))
+}
+
 #[derive(Debug, Deserialize)]
 struct Asset {
     name: String,
     browser_download_url: Url,
+    #[serde(deserialize_with = "deserialize_digest")]
+    digest: Box<[u8; 32]>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -69,8 +93,14 @@ async fn acquire_from_release(
         .find(|a| a.name.contains(prefix))
         .ok_or_else(|| LauncherError::ReleaseAssetNotFound(prefix.to_string()))?;
 
-    utils::download_and_extract_file(client, &asset.browser_download_url, output_dir, false)
-        .await?;
+    utils::download_and_extract_file(
+        client,
+        &asset.browser_download_url,
+        Some(&asset.digest),
+        output_dir,
+        false,
+    )
+    .await?;
     // check if `addons/backstitch` exists in the output directory
     let backstitch_dir = output_dir.join("addons/backstitch");
     if backstitch_dir.exists() {
@@ -233,6 +263,8 @@ pub async fn try_update(
 ) -> Result<VersionFile, LauncherError> {
     let temp_dir = std::env::temp_dir().join("backstitch_update");
 
+    tracing::info!("Temporary working directory: {temp_dir:?}");
+
     println!("Querying GitHub for latest release...");
 
     let latest_release = if config.allow_prerelease.unwrap_or(false) {
@@ -240,6 +272,7 @@ pub async fn try_update(
     } else {
         get_latest_release(client).await?
     };
+    tracing::info!("Latest release: {latest_release:?}");
 
     let latest_metadata = match extract_release_metadata(&latest_release) {
         Ok(metadata) => metadata,
@@ -252,6 +285,7 @@ pub async fn try_update(
             return Err(e);
         }
     };
+    tracing::info!("Latest metadata: {latest_metadata:?}");
     check_release(&latest_metadata)?;
 
     let latest_version = latest_release.tag_name.clone();
@@ -304,6 +338,7 @@ pub async fn try_update(
         .await?;
 
     // this is allowed to fail; maybe we didn't write anything?
+    tracing::info!("Clearing temp directory...");
     let _ = fs::remove_dir_all(&temp_dir).await;
 
     println!("Backstitch update complete.");

@@ -3,12 +3,14 @@ use std::path::PathBuf;
 use std::process::{Command, ExitCode};
 
 use crate::config::CommandConfig;
+use crate::tracing::initialize_tracing;
 use crate::utils::{LauncherError, fail};
 
 pub mod backstitch_update;
 pub mod config;
 pub mod godot_update;
 pub mod godot_urls;
+mod tracing;
 pub mod utils;
 
 async fn download_and_launch(config: &CommandConfig) -> Result<(), LauncherError> {
@@ -173,6 +175,9 @@ async fn main() -> ExitCode {
             return ExitCode::FAILURE;
         }
     };
+
+    initialize_tracing(&config);
+
     #[allow(unused_mut)]
     let (mut cwd, mut exe) = {
         let cwd = std::env::current_dir().expect("Failed to get current directory");

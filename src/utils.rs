@@ -1,6 +1,7 @@
 use futures::StreamExt;
 use indicatif::{ProgressBar, ProgressStyle};
 use reqwest::Client;
+use sha2::{Digest, Sha256};
 #[cfg(not(target_os = "windows"))]
 use std::os::unix::fs::PermissionsExt;
 use std::{
@@ -33,6 +34,8 @@ pub enum LauncherError {
     MalformedVersion(String),
     #[error("the version file was malformed")]
     BadVersionFile(String),
+    #[error("the file downloaded from {0} did not match the expected hash")]
+    DigestMismatch(Url),
     #[error("there was a problem launching Godot: {0}")]
     Launch(String),
     #[error("Godot exited with error code: {0}")]
@@ -109,12 +112,14 @@ fn unzip_file(zip_path: &Path, dest: &Path, skip_root_dir: bool) -> Result<(), L
 pub async fn download_and_extract_file(
     client: &Client,
     url: &Url,
+    expected_digest: Option<&[u8; 32]>,
     output_dir: &Path,
     skip_root_dir: bool,
 ) -> Result<(), LauncherError> {
     let temp_dir = std::env::temp_dir().join("backstitch_update");
     ensure_empty_directory(&temp_dir).await?;
 
+    tracing::info!("GET {url}");
     let response = client
         .get(url.to_string())
         .send()
@@ -135,15 +140,30 @@ pub async fn download_and_extract_file(
     let mut bytes = Vec::with_capacity(total_size as usize);
     let mut stream = response.bytes_stream();
 
+    tracing::info!("Expecting to download {total_size} bytes");
+
+    let mut hasher = expected_digest.map(|_| Sha256::new());
     while let Some(chunk) = stream.next().await {
         let chunk = chunk?;
         bytes.extend_from_slice(&chunk);
+        if let Some(hasher) = hasher.as_mut() {
+            hasher.update(&chunk);
+        }
         pb.inc(chunk.len() as u64);
     }
-
+    let digest = hasher.map(|h| h.finalize());
     pb.finish_with_message("Download complete");
 
+    tracing::info!("Downloaded {} bytes", bytes.len());
+
+    if let (Some(digest), Some(expected)) = (digest, expected_digest) {
+        if digest.as_slice() != expected {
+            return Err(LauncherError::DigestMismatch(url.clone()));
+        }
+    }
+
     let temp_filepath = temp_dir.join("download.zip");
+    tracing::info!("Writing zip to filepath {temp_filepath:?}");
     let mut temp_file = fs::File::create(&temp_filepath).await?;
     temp_file.write_all(&bytes).await?;
 

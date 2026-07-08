@@ -39,6 +39,10 @@ pub struct CommandConfig {
     )]
     #[arg(long)]
     pub allow_prerelease: Option<bool>,
+
+    #[clap(help = "Produce verbose output for debugging.")]
+    #[arg(long, short)]
+    pub verbose: Option<bool>,
 }
 
 #[derive(Error, Debug)]
@@ -104,6 +108,12 @@ pub async fn setup_config() -> Result<CommandConfig, ConfigError> {
             && command_config.godot_path.is_none()
         {
             command_config.godot_path = Some(godot_path);
+        }
+
+        if let Some(verbose) = file_config.verbose
+            && command_config.verbose.is_none()
+        {
+            command_config.verbose = Some(verbose);
         }
     }
 
