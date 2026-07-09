@@ -24,7 +24,7 @@ jobs:
 
       - name: Windows Sign
         # Only run this if it's not a PR or the PR is from the main repository
-        if: github.event_name != 'pull_request' || github.repository == 'inkandswitch/backstitch-launcher'
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
         uses: ./.github/actions/windows-sign
         with:
           BINARY_PATHS: |
@@ -35,7 +35,7 @@ jobs:
           KMS_LOCATION: ${{ secrets.KMS_LOCATION }}
           KMS_KEYRING: ${{ secrets.KMS_KEYRING }}
           KMS_KEY: ${{ secrets.KMS_KEY }}
-            
+
       - name: Collect executables
         shell: bash
         run: |
