@@ -54,7 +54,7 @@ jobs:
 
       - name: Mac Sign
         # Only run this if it's not a PR or the PR is from the main repository
-        if: github.event_name != 'pull_request' || github.repository == 'inkandswitch/backstitch-launcher'
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
         uses: ./.github/actions/macos-sign
         with:
           FRAMEWORK_PATH: ${{ github.workspace }}/artifacts/backstitch-launcher-macos.app
