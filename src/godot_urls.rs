@@ -4,6 +4,7 @@ use reqwest::Url;
 
 use crate::utils::LauncherError;
 
+#[derive(Debug)]
 pub struct GodotDownloadInfo {
     pub url: Url,
     pub exe_path: PathBuf,

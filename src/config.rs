@@ -43,6 +43,10 @@ pub struct CommandConfig {
     )]
     #[arg(long)]
     pub allow_prerelease: Option<bool>,
+
+    #[clap(help = "Produce verbose output for debugging.")]
+    #[arg(long, short, action)]
+    pub verbose: bool,
 }
 
 #[derive(Error, Debug)]
@@ -114,6 +118,10 @@ pub async fn setup_config() -> Result<CommandConfig, ConfigError> {
             && command_config.cwd.is_none()
         {
             command_config.cwd = Some(cwd);
+        }
+
+        if file_config.verbose || command_config.verbose {
+            command_config.verbose = true;
         }
     }
 
