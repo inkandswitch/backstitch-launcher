@@ -218,6 +218,14 @@ async fn main() -> ExitCode {
         cwd = project_root.to_path_buf();
     };
 
+    // Change the current working directory to the custom override
+    if let Some(custom_cwd) = &config.cwd {
+        let custom_cwd = std::fs::canonicalize(custom_cwd).expect("Failed to canonicalize path");
+        std::env::set_current_dir(&custom_cwd).expect("Failed to set current working directory");
+        println!("Changed CWD from {:?} to {:?}", cwd, custom_cwd);
+        cwd = custom_cwd;
+    }
+
     #[cfg(any(target_os = "linux", target_os = "macos"))]
     {
         use std::io::IsTerminal;
