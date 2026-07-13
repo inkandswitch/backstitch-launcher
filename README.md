@@ -28,6 +28,7 @@ dotnet="<auto|true|false>" # Whether to use the .NET build of Godot. If set to a
 allow_prerelease=<true|false> # Whether to allow downloading pre-release versions of Backstitch.
 godot_path="<GODOT_PATH>" # Skip the Godot download and open the exe from a path instead. 
 godot_url="<GODOT_URL>" # Specify a custom Godot URL to download from. Cross-platform support doesn't work, so it had better match your mono and platform versions!
+cwd="<PATH>" # Use a custom CWD for the Backstitch Launcher.
 ```
 
 Command-line specified arguments will take precedence over the `[backstitch_launcher]` section.

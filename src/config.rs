@@ -34,6 +34,10 @@ pub struct CommandConfig {
     #[arg(long)]
     pub godot_path: Option<PathBuf>,
 
+    #[clap(help = "Use a custom working directory. Defaults to the current directory.")]
+    #[arg(long)]
+    pub cwd: Option<PathBuf>,
+
     #[clap(
         help = "Whether to download the latest prerelease version of Backstitch, instead of the stable version. Warning: Here be dragons!"
     )]
@@ -108,6 +112,12 @@ pub async fn setup_config() -> Result<CommandConfig, ConfigError> {
             && command_config.godot_path.is_none()
         {
             command_config.godot_path = Some(godot_path);
+        }
+
+        if let Some(cwd) = file_config.cwd
+            && command_config.cwd.is_none()
+        {
+            command_config.cwd = Some(cwd);
         }
 
         if file_config.verbose || command_config.verbose {
