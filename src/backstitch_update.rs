@@ -305,6 +305,10 @@ pub async fn try_update(
             Ok(release) => release,
             // Change our mind
             Err(e) => {
+                if is_dev_version(&desired_version) {
+                    println!("Dev version detected! Cancelling update.");
+                    return Err(e);
+                }
                 println!("Error getting release {desired_version}: {e}");
                 println!("Updating to latest release...");
                 desired_version = latest_version;

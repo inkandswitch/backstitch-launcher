@@ -40,10 +40,13 @@ async fn download_and_launch(config: &CommandConfig) -> Result<(), LauncherError
     let godot = godot_update::try_update(
         &client,
         config,
-        current_version
-            .ok()
-            .as_ref()
-            .map(|v| v.godot_version.as_str()),
+        current_version.ok().as_ref().and_then(|v| {
+            if !v.godot_version.is_empty() {
+                Some(v.godot_version.as_str())
+            } else {
+                None
+            }
+        }),
         &new_version.godot_version,
     )
     .await?;
