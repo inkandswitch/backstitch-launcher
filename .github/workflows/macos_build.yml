@@ -13,15 +13,15 @@ jobs:
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
 
-      - name: Restore Cache
-        uses: Swatinem/rust-cache@v2
-        with:
-          prefix-key: "backstitch-launcher-macos-build"
-
       - name: Add macOS targets
         run: |
           rustup target add x86_64-apple-darwin
           rustup target add aarch64-apple-darwin
+
+      - name: Restore Cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          prefix-key: "backstitch-launcher-macos-build"
 
       - name: Install cargo-bundle
         run: cargo install cargo-bundle
