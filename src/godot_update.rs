@@ -63,6 +63,9 @@ pub async fn try_update(
     #[cfg(not(target_os = "windows"))]
     utils::make_folder_contents_executable(godot_dir).await?;
 
+    let gdignore_path = godot_dir.join(".gdignore");
+    let _ = tokio::fs::File::create(&gdignore_path).await?;
+
     // We do no validation to ensure that Godot is actually downloaded to the expected path.
     Ok(exe_path)
 }
