@@ -48,6 +48,7 @@ jobs:
           cp -f target/universal/release/backstitch-launcher \
             "$BUNDLE_APP/Contents/MacOS/backstitch-launcher"
           chmod +x "$BUNDLE_APP/Contents/MacOS/backstitch-launcher"
+          touch "$BUNDLE_APP/.gdignore"
           mkdir -p artifacts
           rm -rf artifacts/backstitch-launcher-macos.app
           cp -R "$BUNDLE_APP" artifacts/backstitch-launcher-macos.app
