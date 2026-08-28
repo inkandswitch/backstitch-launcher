@@ -1,5 +1,5 @@
 use reqwest::Client;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::{Command, ExitCode};
 
 use crate::config::CommandConfig;
@@ -260,7 +260,7 @@ async fn main() -> ExitCode {
     return ExitCode::SUCCESS;
 }
 
-async fn create_macos_gdignore(cwd: &PathBuf) {
+async fn create_macos_gdignore(cwd: &Path) {
     let macos_dir = cwd.join("backstitch-launcher-macos.app");
 
     if macos_dir.is_dir() {
