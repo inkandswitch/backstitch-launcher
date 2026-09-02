@@ -1,5 +1,5 @@
 use reqwest::Client;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::{Command, ExitCode};
 
 use crate::config::CommandConfig;
@@ -247,6 +247,8 @@ async fn main() -> ExitCode {
         }
     }
 
+    create_macos_gdignore(&cwd).await;
+
     let res = download_and_launch(&config).await;
     // pause in case of error, so we can read it
     if let Err(e) = res {
@@ -256,4 +258,18 @@ async fn main() -> ExitCode {
         return ExitCode::FAILURE;
     }
     return ExitCode::SUCCESS;
+}
+
+async fn create_macos_gdignore(cwd: &Path) {
+    let macos_dir = cwd.join("backstitch-launcher-macos.app");
+
+    if macos_dir.is_dir() {
+        let gdignore = macos_dir.join(".gdignore");
+
+        let _ = tokio::fs::File::create(&gdignore)
+            .await
+            .inspect_err(|e| ::tracing::error!("Failed to create macOS .gdignore: {e}"));
+
+        ::tracing::trace!("Created runtime .gdignore at {:?}", gdignore);
+    }
 }
